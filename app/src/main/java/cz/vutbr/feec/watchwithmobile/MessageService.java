@@ -42,6 +42,16 @@ public class MessageService extends WearableListenerService {
             LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
             //return;
         }
+        else if (messageEvent.getPath().equals("/path3")){
+            byte[] watchRandom=messageEvent.getData();
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            messageIntent.putExtra("message", watchRandom);
+            messageIntent.putExtra("path", "3");
+
+            LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
+            //return;
+        }
         else {
             super.onMessageReceived(messageEvent);
         }

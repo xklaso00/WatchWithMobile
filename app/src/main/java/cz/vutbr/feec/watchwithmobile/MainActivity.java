@@ -23,8 +23,14 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.gms.wearable.Wearable;
 
+
+
 import java.io.IOException;
 import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -46,12 +52,27 @@ public class MainActivity extends AppCompatActivity {
     long allTimeStart;
     long allTimeEnd;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textview = findViewById(R.id.textView);
-       // IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+        try {
+            EccOperations ec=new EccOperations();
+            ec.genertateSecKey();
+        } catch (NoSuchAlgorithmException e) {
+            Log.i("apdu", "mis1");
+            e.printStackTrace();
+        } catch (InvalidAlgorithmParameterException e) {
+            Log.i("apdu", "mis2");
+            e.printStackTrace();
+        } catch (NoSuchProviderException e) {
+            Log.i("apdu", "mis3");
+            e.printStackTrace();
+        }
+
+        // IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
        // Receiver messageReceiver = new Receiver();
        // LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
         Log.i("sap", "starting");

@@ -15,7 +15,7 @@ utils utils= new utils();
     public void onMessageReceived(MessageEvent messageEvent) {
             //we can pretty much just get one message now with path 1
         if (messageEvent.getPath().equals("/path1")) {
-            final String message = new String(messageEvent.getData());
+           /* final String message = new String(messageEvent.getData());
             byte [] RandNumber= messageEvent.getData();
            // byte[] hashToSign=messageEvent.getData();
             //Log.i("WatchApp","hash to sign is "+utils.bytesToHex(hashToSign));
@@ -23,6 +23,11 @@ utils utils= new utils();
             messageIntent.setAction(Intent.ACTION_SEND);
             messageIntent.putExtra("message", RandNumber);
             messageIntent.putExtra("path","path1");  //pass the received data and path to mainacc with localBroadcast
+            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);*/
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            Log.i("WatchApp","I got rand req ");
+            messageIntent.putExtra("path","path1");
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
 
         }
@@ -33,6 +38,14 @@ utils utils= new utils();
             messageIntent.setAction(Intent.ACTION_SEND);
             messageIntent.putExtra("message", hashToSign);
             messageIntent.putExtra("path","path2");  //pass the received data and path to mainacc with localBroadcast
+            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
+        }
+        else if(messageEvent.getPath().equals("/path3"))
+        {
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            Log.i("WatchApp","I got rand req ");
+            messageIntent.putExtra("path","path3");
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
         }
         else {

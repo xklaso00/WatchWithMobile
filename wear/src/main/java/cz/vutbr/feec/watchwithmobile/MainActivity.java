@@ -107,20 +107,17 @@ public class MainActivity extends WearableActivity {
                 //return;
 
             if (intent.getStringExtra("path").equals("path1")){
-                recieve=false;
-                /*byte[] hash= intent.getByteArrayExtra("message");
-                long startTime=System.nanoTime();
-                signedHash= eccOperations.SignHash(hash);
-                long endTime= System.nanoTime();
-                Log.i(TAG,"Signing of the hash on watch took "+(endTime-startTime)+" ns");
-                Log.i(TAG,"Signature is "+utils.bytesToHex(signedHash));
-                new SendMessage("/path2", signedHash).start();
-                Log.i(TAG,"Signature has been sent.");
-                allEnd=System.nanoTime();
-                Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
-                textView.setText("Communication ended.");*/
-                byte [] randomNumber=intent.getByteArrayExtra("message");
-                eccOperations.setRand(new BigInteger(1,randomNumber));
+                int[] intRandPoint = randPoint();
+                randPoint = utils.intArrtoByteArr(intRandPoint);
+                randPoint = utils.reverseByte(randPoint);
+
+                int[] intRandNUm = randReturn();
+                byte[] randNum = utils.intArrtoByteArr(intRandNUm);
+                randNum = utils.reverseByte32(randNum);
+                eccOperations.setRand(new BigInteger(1, randNum));
+                byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
+                String datapath = "/path3";
+                new SendMessage(datapath, RandPointResponse).start();
                 return;
             }
             else if(intent.getStringExtra("path").equals("path2"))
@@ -136,6 +133,21 @@ public class MainActivity extends WearableActivity {
                 allEnd=System.nanoTime();
                 Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
                 textView.setText("Communication ended.");
+                return;
+            }
+            else if(intent.getStringExtra("path").equals("path3"))
+            {
+                int[] intRandPoint = randPoint();
+                randPoint = utils.intArrtoByteArr(intRandPoint);
+                randPoint = utils.reverseByte(randPoint);
+
+                int[] intRandNUm = randReturn();
+                byte[] randNum = utils.intArrtoByteArr(intRandNUm);
+                randNum = utils.reverseByte32(randNum);
+                eccOperations.setRand(new BigInteger(1, randNum));
+                byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
+                String datapath = "/path3";
+                new SendMessage(datapath, RandPointResponse).start();
                 return;
             }
 

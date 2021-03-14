@@ -1,11 +1,22 @@
 package cz.vutbr.feec.watchwithmobile;
 
+import android.util.Log;
+
 import org.spongycastle.math.ec.ECCurve;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -23,6 +34,7 @@ public class EccOperations {
     BigInteger G2 = new BigInteger("0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",16);
     BigInteger rand=null;
     byte[] Send=null;
+    ECCurve ellipticCurve= new ECCurve.Fp(prime,A,B);
     BigInteger SecKey= new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16); //generating keys is going to be implemented, not needed now for what we do
     //BigInteger PubKey= new BigInteger("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",16);
     ECPoint pubKey=null;
@@ -104,4 +116,24 @@ public class EccOperations {
     public BigInteger getSecKey() {
         return SecKey;
     } //just for testing
+
+    public byte[] genertateSecKey() throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+        Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
+        KeyPairGenerator g = KeyPairGenerator.getInstance("EC");
+        g.initialize(new ECGenParameterSpec("secp256k1"), new SecureRandom());
+        KeyPair aKeyPair = g.generateKeyPair();
+        ECPrivateKey SecKeyA= (ECPrivateKey)aKeyPair.getPrivate();
+        BigInteger SKA= SecKeyA.getS();
+        ECPublicKey PubKeyA= (ECPublicKey)aKeyPair.getPublic();
+        java.security.spec.ECPoint PUK=PubKeyA.getW();
+        BigInteger pubByte = PUK.getAffineX();
+        BigInteger pubByteY= PUK.getAffineY();
+
+        ECPoint PUKA= ellipticCurve.createPoint(PUK.getAffineX(),PUK.getAffineY());
+
+        byte [] publicKeyA= PUKA.getEncoded(true);
+        Log.i("APDUKEY","public key is "+utils.bytesToHex(publicKeyA));
+        Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
+        return bytesFromBigInteger(SKA);
+    }
 }
