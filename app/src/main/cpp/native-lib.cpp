@@ -88,5 +88,30 @@ Java_cz_vutbr_feec_watchwithmobile_MyHostApduService_randPoint(JNIEnv *env, jobj
 
 
 }
+extern "C"
+JNIEXPORT jintArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer(JNIEnv *env, jobject thiz,jintArray sv, jintArray pub, jintArray ev) {
+
+    jintArray cPub= reinterpret_cast<jintArray>(env->GetIntArrayElements(pub, NULL));
+    jintArray cSv= reinterpret_cast<jintArray>(env->GetIntArrayElements(sv, NULL));
+    jintArray cEv= reinterpret_cast<jintArray>(env->GetIntArrayElements(ev, NULL));
+    const uECC_word_t* g = uECC_curve_G(uECC_secp256k1());
+    jint* point1= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1), g,
+                    reinterpret_cast<const uECC_word_t *>(cSv), curve);
+    jint* point2= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point2),
+                    reinterpret_cast<const uECC_word_t *>(cPub),
+                    reinterpret_cast<const uECC_word_t *>(cEv), curve);
+    jint* point3= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
+                   reinterpret_cast<const uECC_word_t *>(point2),
+                   reinterpret_cast<uECC_word_t *>(point3), curve);
+
+    jintArray newArray = env->NewIntArray(nativeNCount * 4);
+    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, point3);
+    return newArray;
+
+}
 
 
