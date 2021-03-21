@@ -50,6 +50,7 @@ public class MessageService extends WearableListenerService {
             messageIntent.putExtra("path", "3");
 
             LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
+
             //return;
         }
         else {

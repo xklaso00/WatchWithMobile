@@ -75,8 +75,10 @@ public class MyHostApduService extends HostApduService {
             (byte)0x02};
     private static final byte[] WATCHTHIS ={(byte)0x80, //start of command signthis
             (byte)0x03};
-    private static final byte[] RANDWATCH ={(byte)0x80, //start of command signthis
+    private static final byte[] RANDWATCH ={(byte)0x80,
             (byte)0x04};
+    private static final byte[] SERVERSIGCOM ={(byte)0x80,
+            (byte)0x05};
     private static final byte[] NOTYET ={(byte)0x88, //start of command signthis
             (byte)0x88};
     EccOperations eccOperations = new EccOperations();
@@ -177,6 +179,24 @@ public class MyHostApduService extends HostApduService {
             else
                 Log.i(TAG,"it was not done in time ") ;
                 return null;
+        }
+        else if (utils.isCommand(SERVERSIGCOM,commandApdu))
+        {
+            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
+            byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
+            byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
+            try {
+                if(eccOperations.verifyServer(sv,ev))
+                {
+                    Log.i(TAG,"It is super legit");
+                    return A_OKAY;
+                }
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return NOTYET;
         }
 
         else {

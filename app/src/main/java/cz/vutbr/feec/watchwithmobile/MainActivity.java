@@ -78,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
         Log.i("sap", "starting");
         Intent intent=new Intent(this.getApplicationContext(),MyHostApduService.class);
         startService(intent); //start MyHostApduService
+
         Log.i("sap", "starting service?");
     }
 

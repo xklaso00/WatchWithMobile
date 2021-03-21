@@ -5,10 +5,13 @@ import android.util.Log;
 import org.spongycastle.math.ec.ECCurve;
 import org.spongycastle.math.ec.ECPoint;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -22,7 +25,12 @@ import java.util.Random;
 
 //class that holds info about curve, secret key for now and functions with EC
 public class EccOperations {
-
+    byte [] ID= new byte[]{(byte)0x10,
+            (byte)0x20,
+            (byte)0x30,
+            (byte)0x40,
+            (byte)0x50,
+    };
     BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
     final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
     BigInteger A = new BigInteger("0");
@@ -38,6 +46,8 @@ public class EccOperations {
     BigInteger SecKey= new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16); //generating keys is going to be implemented, not needed now for what we do
     //BigInteger PubKey= new BigInteger("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",16);
     ECPoint pubKey=null;
+    BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
+    byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
     public EccOperations() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 
         pubKey= G.multiply(SecKey);
@@ -135,5 +145,31 @@ public class EccOperations {
         Log.i("APDUKEY","public key is "+utils.bytesToHex(publicKeyA));
         Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
         return bytesFromBigInteger(SKA);
+    }
+    public boolean verifyServer(byte[] sv, byte [] ev) throws NoSuchAlgorithmException, IOException {
+        ECPoint PubServerEC= ellipticCurve.decodePoint(ServerPubKeyBytes);
+        BigInteger svBig= new BigInteger(1,sv);
+        BigInteger evBig=new BigInteger(1,ev);
+        ECPoint Gsv=G.multiply(svBig);
+        ECPoint PkEv=PubServerEC.multiply(evBig);
+        ECPoint tv= Gsv.add(PkEv);
+        Log.i("APDU","tv is "+utils.bytesToHex(tv.getEncoded(true)));
+        Log.i("APDU","ev is "+utils.bytesToHex(ev));
+        Log.i("APDU","sv is "+utils.bytesToHex(sv));
+        MessageDigest digest = null;
+        digest = MessageDigest.getInstance("SHA-256");
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write(ID);
+        outputStream.write(utils.bytesFromBigInteger(n));
+        outputStream.write(tv.getEncoded(true));
+        byte connectedBytes[] = outputStream.toByteArray( );
+        byte [] hashToVer = digest.digest(connectedBytes);
+        Log.i("APDU","hashToVer is  "+utils.bytesToHex(hashToVer));
+        outputStream.close();
+        if(utils.isEqual(hashToVer,ev))
+            return true;
+        else
+            return false;
+
     }
 }
