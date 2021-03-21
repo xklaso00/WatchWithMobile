@@ -31,6 +31,12 @@ public class EccOperations {
             (byte)0x40,
             (byte)0x50,
     };
+    byte [] MYID= new byte[]{(byte)0x11,
+            (byte)0x22,
+            (byte)0x33,
+            (byte)0x44,
+            (byte)0x55,
+    };
     BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
     final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
     BigInteger A = new BigInteger("0");
@@ -153,30 +159,26 @@ public class EccOperations {
         Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
         return bytesFromBigInteger(SKA);
     }
-    public boolean verifyServer(byte[] sv, byte [] ev) throws NoSuchAlgorithmException, IOException {
-
+    byte[] verServerMessage;
+    public boolean verifyServer(byte[] sv, byte [] ev,byte[] message) throws NoSuchAlgorithmException, IOException {
+        long startTime = System.nanoTime();
+        verServerMessage=message;
         ECPoint PubServerEC= ellipticCurve.decodePoint(ServerPubKeyBytes);
         //BigInteger svBig= new BigInteger(1,sv);
         //BigInteger evBig=new BigInteger(1,ev);
-        long startTime = System.nanoTime();
         /*ECPoint Gsv=G.multiply(svBig);
         Log.i("APDU","Gsv is "+utils.bytesToHex(Gsv.getEncoded(true)));
-
         ECPoint PkEv=PubServerEC.multiply(evBig);
         Log.i("APDU","PkEv is "+utils.bytesToHex(PkEv.getEncoded(true)));
         ECPoint tv= Gsv.add(PkEv);*/
-        long duration=System.nanoTime()-startTime;
-        Log.i("APDU","Ver in java took "+duration/1000000+" ms");
-        startTime=System.nanoTime();
-        //start of C implementation
+        long startTime2=System.nanoTime();
+        //start of C implementation its around 10 times faster than the same in java (6ms vs 60ms)
         byte[] pubCByte=PubServerEC.getEncoded(false);
-        pubCByte= Arrays.copyOfRange(pubCByte,1,pubCByte.length);
-        pubCByte=utils.reverseByte(pubCByte);
-        byte [] svC=utils.reverseByte32(sv);
-        byte [] evC=utils.reverseByte32(ev);
-        int[] intCPub=utils.byteArrayToItArray(pubCByte);
-        int[] intSvC=utils.byteArrayToItArray(svC);
-        int[] intEvC=utils.byteArrayToItArray(evC);
+
+        pubCByte= Arrays.copyOfRange(pubCByte,1,pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
+        int[] intCPub=utils.byteArrayToItArray(utils.reverseByte(pubCByte));//reversing the order of bytes to work in C and also making them int arr to work in C
+        int[] intSvC=utils.byteArrayToItArray(utils.reverseByte32(sv));
+        int[] intEvC=utils.byteArrayToItArray(utils.reverseByte32(ev));
 
         int[] intTvC=verSignServer(intSvC,intCPub,intEvC);
 
@@ -184,8 +186,8 @@ public class EccOperations {
         tvC=utils.reverseByte(tvC);
         byte [] compTvC= getCompPointFromCord(tvC);
         Log.i("APDU","from C tv is "+utils.bytesToHex(compTvC));
-        duration=System.nanoTime()-startTime;
-        Log.i("APDU","Ver in C took "+duration/1000000+" ms");
+        long duration2=System.nanoTime()-startTime2;
+        Log.i("APDU","Ver in C took "+duration2/1000000+" ms");
         //end of C implementation
 
         /*Log.i("APDU","tv is "+utils.bytesToHex(tv.getEncoded(true)));
@@ -201,7 +203,8 @@ public class EccOperations {
         byte [] hashToVer = digest.digest(connectedBytes);
         Log.i("APDU","hashToVer is  "+utils.bytesToHex(hashToVer));
         outputStream.close();
-
+        long duration=System.nanoTime()-startTime;
+        Log.i("APDU","All and all verify took  "+duration/1000000+" ms");
 
         if(utils.isEqual(hashToVer,ev))
             return true;
@@ -209,5 +212,41 @@ public class EccOperations {
             return false;
 
     }
+
+    public byte [] generateProof2() throws NoSuchAlgorithmException, IOException {
+        int[] intT=randPoint();
+        byte []t=utils.reverseByte(utils.intArrtoByteArr(intT));
+        t=getCompPointFromCord(t);
+        int[] randNumberInt=randReturn();
+        byte[] randNumber=utils.reverseByte32(utils.intArrtoByteArr(randNumberInt));
+        int[] intTk=generateTk();
+        byte[] Tk=utils.reverseByte(utils.intArrtoByteArr(intTk));
+        Tk=getCompPointFromCord(Tk);
+
+        MessageDigest digest = null;
+        digest = MessageDigest.getInstance("SHA-256");
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write(MYID);
+        outputStream.write(t);
+        outputStream.write(Tk);
+        outputStream.write(verServerMessage);
+        byte connectedBytes[] = outputStream.toByteArray( );
+        byte [] hash = digest.digest(connectedBytes);
+        outputStream.reset();
+
+
+        BigInteger mid= ((new BigInteger(1,hash)).multiply(SecKey)).mod(n);
+        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(n);
+        byte [] signature= utils.bytesFromBigInteger(sv);
+        outputStream.write(MYID);
+        outputStream.write(hash);
+        outputStream.write(signature);
+        byte[] finalMSG=outputStream.toByteArray();
+        outputStream.close();
+        return finalMSG;
+    }
     public native int[] verSignServer(int[] sv, int [] pub, int [] ev);
+    public native int[] randPoint();
+    public native int [] randReturn();
+    public native int [] generateTk();
 }

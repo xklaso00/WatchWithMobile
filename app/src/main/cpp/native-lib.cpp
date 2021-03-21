@@ -88,6 +88,7 @@ Java_cz_vutbr_feec_watchwithmobile_MyHostApduService_randPoint(JNIEnv *env, jobj
 
 
 }
+jint* tv= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2]());
 extern "C"
 JNIEXPORT jintArray  JNICALL
 Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer(JNIEnv *env, jobject thiz,jintArray sv, jintArray pub, jintArray ev) {
@@ -103,14 +104,56 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer(JNIEnv *env, jobj
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point2),
                     reinterpret_cast<const uECC_word_t *>(cPub),
                     reinterpret_cast<const uECC_word_t *>(cEv), curve);
-    jint* point3= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2]());
+
     uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
                    reinterpret_cast<const uECC_word_t *>(point2),
-                   reinterpret_cast<uECC_word_t *>(point3), curve);
+                   reinterpret_cast<uECC_word_t *>(tv), curve);
 
     jintArray newArray = env->NewIntArray(nativeNCount * 4);
-    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, point3);
+    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, tv);
     return newArray;
+
+}
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk(JNIEnv *env, jobject /* this */) { //just a function to return random number to C, only call this after randPoint has been called
+    jint* point1= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1),
+                    reinterpret_cast<const uECC_word_t *>(tv),
+                    reinterpret_cast<const uECC_word_t *>(rando), curve);
+
+    jintArray newArray = env->NewIntArray(nativeNCount*4);
+    env->SetIntArrayRegion(newArray,0,nativeNCount*4 ,point1);
+    return newArray;
+
+}
+
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn(JNIEnv *env, jobject /* this */) { //just a function to return random number to C, only call this after randPoint has been called
+    jintArray newArray = env->NewIntArray(nativeNCount*2);
+    env->SetIntArrayRegion(newArray,0,nativeNCount*2 ,rando);
+    return newArray;
+
+}
+//function for generating random point in C
+extern "C"
+JNIEXPORT jintArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject thiz) {
+
+    const uECC_word_t* n = uECC_curve_n(uECC_secp256k1());
+    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando), uECC_secp256k1()->n, nativeNCount); //generate random number max is n of curve
+    const uECC_word_t* g = uECC_curve_G(uECC_secp256k1());
+
+    jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[nativeNCount *4]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint), g,
+                    reinterpret_cast<const uECC_word_t *>(rando), curve); //multiply G with random number, save to rando
+
+    jintArray newArray = env->NewIntArray(nativeNCount * 4); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, randPoint);//we release the array for Java to use
+
+    return newArray;
+
 
 }
 

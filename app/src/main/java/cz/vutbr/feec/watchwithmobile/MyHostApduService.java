@@ -186,10 +186,10 @@ public class MyHostApduService extends HostApduService {
             byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
             byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
             try {
-                if(eccOperations.verifyServer(sv,ev))
+                if(eccOperations.verifyServer(sv,ev,commandApdu))
                 {
                     Log.i(TAG,"It is super legit");
-                    return A_OKAY;
+                    return eccOperations.generateProof2();
                 }
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
