@@ -1,6 +1,9 @@
 package cz.vutbr.feec.watchwithmobile;
 
+import android.os.Build;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import org.spongycastle.math.ec.ECCurve;
 import org.spongycastle.math.ec.ECPoint;
@@ -22,6 +25,10 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Random;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 //class that holds info about curve, secret key for now and functions with EC
 public class EccOperations {
@@ -54,6 +61,8 @@ public class EccOperations {
     ECPoint pubKey=null;
     BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
     byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
+    private SecretKey AESKey;
+    private byte[] lastAESIV;
     public EccOperations() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 
         pubKey= G.multiply(SecKey);
@@ -232,6 +241,7 @@ public class EccOperations {
         outputStream.write(verServerMessage);
         byte connectedBytes[] = outputStream.toByteArray( );
         byte [] hash = digest.digest(connectedBytes);
+        Log.i("APDU",utils.bytesToHex(hash));
         outputStream.reset();
 
 
@@ -243,7 +253,34 @@ public class EccOperations {
         outputStream.write(signature);
         byte[] finalMSG=outputStream.toByteArray();
         outputStream.close();
+        InicializeAES(Tk);
         return finalMSG;
+    }
+    public void InicializeAES(byte[] Tk)
+    {
+        byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
+        AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");
+        lastAESIV= new byte[12];
+        SecureRandom random = new SecureRandom();
+        random.nextBytes(lastAESIV);
+    }
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public byte[] generateSecretAPDUMessage(byte[] msg) throws Exception {
+        byte [] encrypted=AESGCMClass.encrypt(msg,AESKey,lastAESIV);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write(lastAESIV);
+        outputStream.write(encrypted);
+        byte connectedBytes[] = outputStream.toByteArray( );
+        outputStream.close();
+        return connectedBytes;
+
+    }
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public byte[] decodeAESCommand(byte [] command) throws Exception {
+        byte[] IV= Arrays.copyOfRange(command,5,17);
+        byte[] AESed= Arrays.copyOfRange(command,17,command.length-1);
+        byte[] decrypted= AESGCMClass.decrypt(AESed,AESKey,IV);
+        return decrypted;
     }
     public native int[] verSignServer(int[] sv, int [] pub, int [] ev);
     public native int[] randPoint();

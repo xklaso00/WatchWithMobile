@@ -79,6 +79,8 @@ public class MyHostApduService extends HostApduService {
             (byte)0x04};
     private static final byte[] SERVERSIGCOM ={(byte)0x80,
             (byte)0x05};
+    private static final byte[] AESTESTCOM ={(byte)0x80,
+            (byte)0x06};
     private static final byte[] NOTYET ={(byte)0x88, //start of command signthis
             (byte)0x88};
     EccOperations eccOperations = new EccOperations();
@@ -197,6 +199,16 @@ public class MyHostApduService extends HostApduService {
                 e.printStackTrace();
             }
             return NOTYET;
+        }
+        else if (utils.isCommand(AESTESTCOM,commandApdu))
+        {
+            try {
+                byte[] decrypted=eccOperations.decodeAESCommand(commandApdu);
+                Log.i(TAG,"Decrypeted part is "+utils.bytesToHex(decrypted));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return A_OKAY;
         }
 
         else {

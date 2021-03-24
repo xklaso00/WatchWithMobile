@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textview = findViewById(R.id.textView);
-        try {
+        /*try {
             EccOperations ec=new EccOperations();
             ec.genertateSecKey();
         } catch (NoSuchAlgorithmException e) {
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         } catch (NoSuchProviderException e) {
             Log.i("apdu", "mis3");
             e.printStackTrace();
-        }
+        }*/
 
         // IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
        // Receiver messageReceiver = new Receiver();
