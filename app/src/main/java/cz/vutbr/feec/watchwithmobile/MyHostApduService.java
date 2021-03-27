@@ -20,6 +20,7 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.Wearable;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
@@ -79,6 +80,8 @@ public class MyHostApduService extends HostApduService {
             (byte)0x04};
     private static final byte[] SERVERSIGCOM ={(byte)0x80,
             (byte)0x05};
+    private static final byte[] SERVERSIGCOMWITHWATCH ={(byte)0x80,
+            (byte)0x07};
     private static final byte[] AESTESTCOM ={(byte)0x80,
             (byte)0x06};
     private static final byte[] NOTYET ={(byte)0x88, //start of command signthis
@@ -86,6 +89,10 @@ public class MyHostApduService extends HostApduService {
     EccOperations eccOperations = new EccOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
+    boolean serverLegit=false;
+    byte[] halfMsg;
+    boolean m1sent=false;
+    boolean m2sent=false;
     public MyHostApduService() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
     }
     Bundle extras=null;
@@ -104,7 +111,7 @@ public class MyHostApduService extends HostApduService {
         }
 
         //reader wants random point, generate it and return it as byte
-        else if (utils.isCommand(GIVERAND,commandApdu))
+        /*else if (utils.isCommand(GIVERAND,commandApdu))
         {
 
             SendMessage sm=new SendMessage("/path3", GIVERAND);
@@ -132,8 +139,8 @@ public class MyHostApduService extends HostApduService {
             Log.i(TAG,"In C generating random number and calculating random point took "+(end-start)/1000000+" ms") ;
             Log.i(TAG,"APDU_COMMAND_0x01 triggered. Response: "+utils.bytesToHex(RandPointResponse));
             return RandPointResponse;
-        }
-        else if (utils.isCommand(RANDWATCH,commandApdu)&&Example.GotRandWatch==false)
+        }*/
+       /* else if (utils.isCommand(RANDWATCH,commandApdu)&&Example.GotRandWatch==false)
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             return NOTYET;
@@ -181,7 +188,7 @@ public class MyHostApduService extends HostApduService {
             else
                 Log.i(TAG,"it was not done in time ") ;
                 return null;
-        }
+        }*/
         else if (utils.isCommand(SERVERSIGCOM,commandApdu))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
@@ -192,6 +199,7 @@ public class MyHostApduService extends HostApduService {
                 {
                     Log.i(TAG,"It is super legit");
                     return eccOperations.generateProof2();
+                     //eccOperations.generateProof2();
                 }
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
@@ -210,7 +218,66 @@ public class MyHostApduService extends HostApduService {
             }
             return A_OKAY;
         }
+        else if (utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(!m1sent))
+        {
+            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
+            byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
+            byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
+            try {
 
+                if(eccOperations.verifyServer(sv,ev,commandApdu))
+                {
+                    Log.i(TAG,"It is super legit");
+                    serverLegit=true;
+                    byte[]Tv=eccOperations.getTvPoint();
+                    if(m1sent==false) {
+                        m1sent=true;
+                        new SendMessage("/path1", Tv).start();
+                    }
+                    m1sent=true;
+                    if(Example.GotIt==false)
+                        return NOTYET;
+                   /* else
+                    {
+                        ByteArrayOutputStream outputStream= new ByteArrayOutputStream();
+                        outputStream.write(halfMsg);
+                        outputStream.write(signedFromWatch);
+                        byte[] FullMsg=outputStream.toByteArray();
+                        outputStream.close();
+                        Log.i(TAG,"FullMSG is "+utils.bytesToHex(FullMsg));
+                        return FullMsg;
+                    }*/
+                    //eccOperations.generateProof2();
+                }
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return NOTYET;
+        }
+        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(m1sent)&&(!Example.GotIt))
+        {
+            return NOTYET;
+        }
+        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(Example.GotIt))
+        {
+            try {
+                ByteArrayOutputStream outputStream= new ByteArrayOutputStream();
+                outputStream.write(halfMsg);
+                outputStream.write(signedFromWatch);
+                byte[] FullMsg=outputStream.toByteArray();
+                outputStream.close();
+                Log.i(TAG,"FullMSG is "+utils.bytesToHex(FullMsg));
+                return FullMsg;
+            }
+            catch (Exception e)
+            {
+                Log.i(TAG,"EXCEPTIon in final msg sent");
+            }
+            return NOTYET;
+
+        }
         else {
 
             return UNKNOWN_CMD_SW;
@@ -219,13 +286,10 @@ public class MyHostApduService extends HostApduService {
     @Override
     public void onDeactivated(int reason) {
         Log.i(TAG,"Communication is done.");
+        m1sent=false;
+        Example.GotIt=false;
     }
-    class Waiter extends  Thread{
-        public void run()
-        {
 
-        }
-    }
 
     class SendMessage extends Thread {
         String path;
@@ -283,14 +347,31 @@ public class MyHostApduService extends HostApduService {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getStringExtra("path").equals("2")){
-                signedFromWatch = intent.getByteArrayExtra("message");
+                signedFromWatch = intent.getByteArrayExtra("data");
                 Log.i(TAG,"I got it from the watch");
                 Log.i(TAG,"Signed from watch is : "+utils.bytesToHex(signedFromWatch)) ;
-                long End= System.nanoTime();
-                long Duration= End-Start;
-                Log.i(TAG, "It toooooook "+Duration/1000000+"ms");
+               // long End= System.nanoTime();
+               // long Duration= End-Start;
+               // Log.i(TAG, "It toooooook "+Duration/1000000+"ms");
                 //notifyAll();
                 Example.GotIt=true;
+            }
+            else if(intent.getStringExtra("path").equals("1"))
+            {
+                Log.i(TAG,"got path1 in LBM");
+                byte[] Tk2T1=intent.getByteArrayExtra("data");
+                byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,33);
+                Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
+                byte[] T1= Arrays.copyOfRange(Tk2T1,33,Tk2T1.length);
+                Log.i(TAG,"T1 is "+utils.bytesToHex(T1));
+                try {
+                    halfMsg=eccOperations.GenerateProofWithWatch(Tk2,T1);
+                    new SendMessage("/path2",eccOperations.getHashForBoth()).start();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             else if(intent.getStringExtra("path").equals("3")) {
                 RandFromWatch = intent.getByteArrayExtra("message");

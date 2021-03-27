@@ -19,6 +19,8 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.android.gms.wearable.Wearable;
 import com.google.android.gms.wearable.Node;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -107,23 +109,33 @@ public class MainActivity extends WearableActivity {
                 //return;
 
             if (intent.getStringExtra("path").equals("path1")){
-                int[] intRandPoint = randPoint();
-                randPoint = utils.intArrtoByteArr(intRandPoint);
-                randPoint = utils.reverseByte(randPoint);
-
-                int[] intRandNUm = randReturn();
-                byte[] randNum = utils.intArrtoByteArr(intRandNUm);
-                randNum = utils.reverseByte32(randNum);
-                eccOperations.setRand(new BigInteger(1, randNum));
-                byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
-                String datapath = "/path3";
-                new SendMessage(datapath, RandPointResponse).start();
-                return;
+                allStart=System.nanoTime();
+                Log.i(TAG,"I got path 1 in LBM");
+                byte [] Tv= intent.getByteArrayExtra("data");
+                byte[] T1=eccOperations.createT1();
+                byte [] Tk2= eccOperations.createTK2(Tv);
+                Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
+                Log.i(TAG,"T1 is "+utils.bytesToHex(T1));
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                try {
+                    outputStream.write(Tk2);
+                    outputStream.write(T1);
+                    byte[] Tk2T1=outputStream.toByteArray();
+                    outputStream.close();
+                    new SendMessage("/path1",Tk2T1).start();
+                    Log.i(TAG,"Tk2T1 has been sent");
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             else if(intent.getStringExtra("path").equals("path2"))
             {
                 byte[] hash= intent.getByteArrayExtra("message");
                 long startTime=System.nanoTime();
+
+
+
                 signedHash= eccOperations.SignHash(hash);
                 long endTime= System.nanoTime();
                 Log.i(TAG,"Signing of the hash on watch took "+(endTime-startTime)+" ns");
@@ -137,7 +149,7 @@ public class MainActivity extends WearableActivity {
             }
             else if(intent.getStringExtra("path").equals("path3"))
             {
-                int[] intRandPoint = randPoint();
+                /*int[] intRandPoint = randPoint();
                 randPoint = utils.intArrtoByteArr(intRandPoint);
                 randPoint = utils.reverseByte(randPoint);
 
@@ -148,7 +160,7 @@ public class MainActivity extends WearableActivity {
                 byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
                 String datapath = "/path3";
                 new SendMessage(datapath, RandPointResponse).start();
-                return;
+                return;*/
             }
 
 
@@ -178,7 +190,7 @@ public class MainActivity extends WearableActivity {
 
                 for (Node node : nodes) {
                     Task<Integer> sendMessageTask = Wearable.getMessageClient(MainActivity.this).sendMessage(node.getId(), path, message);
-
+                    Log.i(TAG,"MSG SENT FROM THREAD");
                 }
 
             } catch (ExecutionException exception) {
@@ -190,8 +202,7 @@ public class MainActivity extends WearableActivity {
             return;
         }
     }
-    public native int[] randPoint();
-    public native int [] randReturn();
+
 }
 
 

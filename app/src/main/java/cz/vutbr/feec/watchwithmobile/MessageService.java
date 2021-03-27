@@ -23,22 +23,23 @@ public class MessageService extends WearableListenerService {
         //if we get message with path 1, we pass data and path value to main activity
         if (messageEvent.getPath().equals("/path1")) {
 
-            byte[] randPoint=messageEvent.getData();
+            byte[] Tk2T1=messageEvent.getData();
             Intent messageIntent = new Intent(); //we have to broadcast intent so create one
             messageIntent.setAction(Intent.ACTION_SEND);
-            messageIntent.putExtra("message", randPoint);
+            Log.i("APDU","I got the first one in message service");
+            messageIntent.putExtra("data", Tk2T1);
             messageIntent.putExtra("path", "1");
             LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
-            //return;
+
         }
         else if (messageEvent.getPath().equals("/path2")){
             byte[] signed=messageEvent.getData();
             Intent messageIntent = new Intent();
             messageIntent.setAction(Intent.ACTION_SEND);
-            messageIntent.putExtra("message", signed);
+            messageIntent.putExtra("data", signed);
             messageIntent.putExtra("path", "2");
             Log.i("APDU","I got the second one in message service");
-            Example.GotIt=true;
+            //Example.GotIt=true;
             LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
             //return;
         }

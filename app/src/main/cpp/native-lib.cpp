@@ -136,6 +136,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn(JNIEnv *env, jobject
     return newArray;
 
 }
+jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[nativeNCount *2]());
 //function for generating random point in C
 extern "C"
 JNIEXPORT jintArray  JNICALL
@@ -145,7 +146,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject 
     uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando), uECC_secp256k1()->n, nativeNCount); //generate random number max is n of curve
     const uECC_word_t* g = uECC_curve_G(uECC_secp256k1());
 
-    jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[nativeNCount *4]());
+
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint), g,
                     reinterpret_cast<const uECC_word_t *>(rando), curve); //multiply G with random number, save to rando
 
@@ -153,8 +154,36 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject 
     env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, randPoint);//we release the array for Java to use
 
     return newArray;
-
-
 }
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTWithWatch(JNIEnv *env, jobject /* this */,jintArray t1) {
+    jintArray ct1= reinterpret_cast<jintArray>(env->GetIntArrayElements(t1, NULL));
+    jint* point1= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(ct1),
+                   reinterpret_cast<const uECC_word_t *>(randPoint),
+                   reinterpret_cast<uECC_word_t *>(point1), curve);
 
+    jintArray newArray = env->NewIntArray(nativeNCount * 4); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, point1);//we release the array for Java to use
 
+    return newArray;
+}
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch(JNIEnv *env, jobject /* this */,jintArray tk2) {
+    jintArray cTk2= reinterpret_cast<jintArray>(env->GetIntArrayElements(tk2, NULL));
+
+    jint* TvR= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(TvR),
+                    reinterpret_cast<const uECC_word_t *>(tv),
+                    reinterpret_cast<const uECC_word_t *>(rando), curve);
+    jint* tk= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(TvR),
+                   reinterpret_cast<const uECC_word_t *>(cTk2), reinterpret_cast<uECC_word_t *>(tk), curve);
+
+    jintArray newArray = env->NewIntArray(nativeNCount * 4); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, tk);//we release the array for Java to use
+
+    return newArray;
+}

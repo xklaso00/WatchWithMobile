@@ -59,7 +59,8 @@ public class EccOperations {
     {
         BigInteger M = null;
         BigInteger hashBig= new BigInteger(1,hash);
-        M= rand.add(hashBig.multiply(SecKey)).mod(n);
+        M= (hashBig.multiply(SecKey)).mod(n);
+        M=(rand.subtract(M)).mod(n);
         byte [] M2= bytesFromBigInteger(M);
         //Log.i("neco", "M is " +ByteArrayToHexString(M2));
         return  M2;
@@ -101,8 +102,32 @@ public class EccOperations {
         byte [] comPoint = ecPoint.getEncoded(true);
         return comPoint;
     }
+    public byte[] createT1()
+    {
+        int[] T1Int=randPoint();
+        byte []t1=utils.reverseByte(utils.intArrtoByteArr(T1Int));
+        t1=getCompPointFromCord(t1);
+        int[] randNumberInt=randReturn();
+        byte[] randNumber=utils.reverseByte32(utils.intArrtoByteArr(randNumberInt));
+        rand=new BigInteger(1,randNumber);
+        return t1;
+    }
+    public byte [] createTK2( byte [] Tv)
+    {
+        ECPoint TvPoint= curve.decodePoint(Tv);
+        byte[] TVforC=TvPoint.getEncoded(false);
+        TVforC= Arrays.copyOfRange(TVforC,1,TVforC.length);
+        int[] intTVforC=utils.byteArrayToItArray(utils.reverseByte(TVforC));
+        int[]Tk2FromC=CforTk2(intTVforC);
+        byte[] Tk2=utils.reverseByte(utils.intArrtoByteArr(Tk2FromC));
+        Tk2=getCompPointFromCord(Tk2);
+        return Tk2;
+    }
 
     public BigInteger getSecKey() {
         return SecKey;
     }
+    public native int[] randPoint();
+    public native int [] randReturn();
+    public native int [] CforTk2(int[] Tv);
 }

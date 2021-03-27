@@ -26,8 +26,10 @@ utils utils= new utils();
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);*/
             Intent messageIntent = new Intent();
             messageIntent.setAction(Intent.ACTION_SEND);
-            Log.i("WatchApp","I got rand req ");
+            Log.i("WatchApp","I got Tv from phone ");
+            byte [] Tv=messageEvent.getData();
             messageIntent.putExtra("path","path1");
+            messageIntent.putExtra("data",Tv);
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
 
         }

@@ -63,6 +63,7 @@ public class EccOperations {
     byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
     private SecretKey AESKey;
     private byte[] lastAESIV;
+    private byte [] TvPoint;
     public EccOperations() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 
         pubKey= G.multiply(SecKey);
@@ -139,7 +140,7 @@ public class EccOperations {
         }
         catch ( Exception e)
         {
-            Log.i("APDU","EROOR point");
+            Log.i("APDU","EROOR point "+utils.bytesToHex(cords));
         }
         byte [] comPoint = ecPoint.getEncoded(true); //compressed point, we need that first byte before x cord to identify where the poitn is, this method does that
         return comPoint;
@@ -194,6 +195,7 @@ public class EccOperations {
         byte[] tvC=utils.intArrtoByteArr(intTvC);
         tvC=utils.reverseByte(tvC);
         byte [] compTvC= getCompPointFromCord(tvC);
+        TvPoint=compTvC;
         Log.i("APDU","from C tv is "+utils.bytesToHex(compTvC));
         long duration2=System.nanoTime()-startTime2;
         Log.i("APDU","Ver in C took "+duration2/1000000+" ms");
@@ -256,6 +258,61 @@ public class EccOperations {
         InicializeAES(Tk);
         return finalMSG;
     }
+    byte[] hashForBoth;
+    public byte[] GenerateProofWithWatch(byte[] Tk2, byte[] t1) throws NoSuchAlgorithmException, IOException {
+        int[] intRandPoint=randPoint();
+        byte []randPoint=utils.reverseByte(utils.intArrtoByteArr(intRandPoint));
+        randPoint=getCompPointFromCord(randPoint);
+        int[] randNumberInt=randReturn();
+        byte[] randNumber=utils.reverseByte32(utils.intArrtoByteArr(randNumberInt));
+        int[] TfromC=generateTWithWatch(getCPointFromCompressedByte(t1));
+        byte[] t=getCompPointFromCPoint(TfromC);
+        int[] TkFromC=generateTkWithWatch(getCPointFromCompressedByte(Tk2));
+        byte[] Tk=getCompPointFromCPoint(TkFromC);
+        Log.i("APDU","Tk is"+utils.bytesToHex(Tk));
+        Log.i("APDU","t is "+utils.bytesToHex(t));
+        MessageDigest digest = null;
+        digest = MessageDigest.getInstance("SHA-256");
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write(MYID);
+        outputStream.write(t);
+        outputStream.write(Tk);
+        outputStream.write(verServerMessage);
+        byte connectedBytes[] = outputStream.toByteArray( );
+        hashForBoth = digest.digest(connectedBytes);
+        Log.i("APDU","Hash for both is "+utils.bytesToHex(hashForBoth));
+        outputStream.reset();
+        BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(SecKey)).mod(n);
+        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(n);
+        byte [] signature= utils.bytesFromBigInteger(sv);
+        Log.i("APDU","sig from phone is "+utils.bytesToHex(signature));
+        outputStream.write(MYID);
+        outputStream.write(hashForBoth);
+        outputStream.write(signature);
+        byte[] finalMSG=outputStream.toByteArray();
+        outputStream.close();
+        InicializeAES(Tk);
+        return finalMSG;
+
+    }
+    public byte[] getHashForBoth()
+    {
+        Log.i("APDU","Hash is "+utils.bytesToHex(hashForBoth));
+        return hashForBoth;
+    }
+    public int[] getCPointFromCompressedByte(byte[] compressedPoint)
+    {
+        ECPoint point= curve.decodePoint(compressedPoint);
+        byte[] uncompressedJavaPoint=point.getEncoded(false);
+        uncompressedJavaPoint=Arrays.copyOfRange(uncompressedJavaPoint,1,uncompressedJavaPoint.length);
+        int[] CReadyPoint=utils.byteArrayToItArray(utils.reverseByte(uncompressedJavaPoint));
+        return CReadyPoint;
+    }
+    public byte[] getCompPointFromCPoint(int[] CPoint)
+    {
+        byte[] point=utils.reverseByte(utils.intArrtoByteArr(CPoint));
+        return getCompPointFromCord(point);
+    }
     public void InicializeAES(byte[] Tk)
     {
         byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
@@ -286,4 +343,11 @@ public class EccOperations {
     public native int[] randPoint();
     public native int [] randReturn();
     public native int [] generateTk();
+    public native int[] generateTWithWatch(int[] t1);
+    public native int [] generateTkWithWatch(int[] tk2);
+
+
+    public byte[] getTvPoint() {
+        return TvPoint;
+    }
 }
