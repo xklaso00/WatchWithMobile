@@ -20,7 +20,7 @@
             android:id="@+id/talkClick"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Start communication" />
+            android:text="Reset Communication" />
 
         <TextView
             android:id="@+id/text"

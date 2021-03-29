@@ -56,7 +56,14 @@ public class MainActivity extends WearableActivity {
         talkButton =  findViewById(R.id.talkClick);
 
 //Create an OnClickListener//
-
+        talkButton.setOnClickListener(new View.OnClickListener() {
+                                          @Override
+                                          public void onClick(View v) {
+                                              firstdone=false;
+                                              seconddone=false;
+                                              textView.setText("Communication has been reseted!");
+                                          }
+                                      });
         /*talkButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -100,7 +107,8 @@ public class MainActivity extends WearableActivity {
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, newFilter);
     }
 
-
+    boolean firstdone=false;
+    boolean seconddone=false;
     //receiver to receive LocalBroadcasts from messageService Class
     public class Receiver extends BroadcastReceiver {
         @Override
@@ -109,6 +117,9 @@ public class MainActivity extends WearableActivity {
                 //return;
 
             if (intent.getStringExtra("path").equals("path1")){
+                if (firstdone==true)
+                    return;
+                firstdone=true;
                 allStart=System.nanoTime();
                 Log.i(TAG,"I got path 1 in LBM");
                 byte [] Tv= intent.getByteArrayExtra("data");
@@ -131,6 +142,9 @@ public class MainActivity extends WearableActivity {
             }
             else if(intent.getStringExtra("path").equals("path2"))
             {
+                if (seconddone==true)
+                    return;
+                seconddone=true;
                 byte[] hash= intent.getByteArrayExtra("message");
                 long startTime=System.nanoTime();
 

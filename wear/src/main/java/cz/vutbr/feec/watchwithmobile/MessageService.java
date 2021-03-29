@@ -11,6 +11,7 @@ import com.google.android.gms.wearable.WearableListenerService;
 
 public class MessageService extends WearableListenerService {
 utils utils= new utils();
+
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
             //we can pretty much just get one message now with path 1
