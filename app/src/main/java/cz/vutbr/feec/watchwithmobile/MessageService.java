@@ -44,14 +44,14 @@ public class MessageService extends WearableListenerService {
             //return;
         }
         else if (messageEvent.getPath().equals("/path3")){
-            byte[] watchRandom=messageEvent.getData();
+            /*byte[] watchRandom=messageEvent.getData();
             Intent messageIntent = new Intent();
             messageIntent.setAction(Intent.ACTION_SEND);
             messageIntent.putExtra("message", watchRandom);
             messageIntent.putExtra("path", "3");
 
-            LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
-
+            LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);*/
+            Log.i("APDU","Got test msg in service");
             //return;
         }
         else {

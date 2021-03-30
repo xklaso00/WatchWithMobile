@@ -43,7 +43,8 @@ public class MainActivity extends WearableActivity {
     final static String TAG= "WatchMainApp";
     private long allStart;
     private long allEnd;
-
+    private static final byte[] A_OKAY ={ (byte)0x90,  //we send this to signalize everything is A_OKAY!
+            (byte)0x00};
 
     public MainActivity() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
     }
@@ -61,6 +62,7 @@ public class MainActivity extends WearableActivity {
                                           public void onClick(View v) {
                                               firstdone=false;
                                               seconddone=false;
+                                              testDone=false;
                                               textView.setText("Communication has been reseted!");
                                           }
                                       });
@@ -108,6 +110,7 @@ public class MainActivity extends WearableActivity {
     }
 
     boolean firstdone=false;
+    boolean testDone= false;
     boolean seconddone=false;
     //receiver to receive LocalBroadcasts from messageService Class
     public class Receiver extends BroadcastReceiver {
@@ -163,6 +166,11 @@ public class MainActivity extends WearableActivity {
             }
             else if(intent.getStringExtra("path").equals("path3"))
             {
+                if(testDone)
+                    return;
+                testDone=true;
+                new SendMessage("/path3", A_OKAY).start();
+                return;
                 /*int[] intRandPoint = randPoint();
                 randPoint = utils.intArrtoByteArr(intRandPoint);
                 randPoint = utils.reverseByte(randPoint);

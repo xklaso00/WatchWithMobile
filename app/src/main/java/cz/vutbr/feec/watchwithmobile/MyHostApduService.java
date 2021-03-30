@@ -51,6 +51,7 @@ public class MyHostApduService extends HostApduService {
         //Handler handler = new Handler(looper);
         //this.registerReceiver(messageReceiver, messageFilter,null,handler);
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
+        new SendMessage("/path3",A_OKAY).start();
         return START_NOT_STICKY;
     }
 
@@ -288,6 +289,8 @@ public class MyHostApduService extends HostApduService {
         Log.i(TAG,"Communication is done.");
         m1sent=false;
         Example.GotIt=false;
+        Example.gotSecondLBM=false;
+        Example.gotFirstLBM=false;
     }
 
 
@@ -347,8 +350,12 @@ public class MyHostApduService extends HostApduService {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getStringExtra("path").equals("2")){
-                signedFromWatch = intent.getByteArrayExtra("data");
                 Log.i(TAG,"I got it from the watch");
+                if(Example.gotSecondLBM==true)
+                    return;
+                Example.gotSecondLBM=true;
+                signedFromWatch = intent.getByteArrayExtra("data");
+
                 Log.i(TAG,"Signed from watch is : "+utils.bytesToHex(signedFromWatch)) ;
                // long End= System.nanoTime();
                // long Duration= End-Start;
@@ -358,6 +365,10 @@ public class MyHostApduService extends HostApduService {
             }
             else if(intent.getStringExtra("path").equals("1"))
             {
+                Log.i(TAG,"got path1 in LBM");
+                if(Example.gotFirstLBM==true)
+                    return;
+                Example.gotFirstLBM=true;
                 Log.i(TAG,"got path1 in LBM");
                 byte[] Tk2T1=intent.getByteArrayExtra("data");
                 byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,33);

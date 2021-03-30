@@ -47,7 +47,7 @@ utils utils= new utils();
         {
             Intent messageIntent = new Intent();
             messageIntent.setAction(Intent.ACTION_SEND);
-            Log.i("WatchApp","I got rand req ");
+            Log.i("WatchApp","I got testing msg ");
             messageIntent.putExtra("path","path3");
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
         }
