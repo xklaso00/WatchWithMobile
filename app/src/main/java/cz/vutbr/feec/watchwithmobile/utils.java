@@ -1,6 +1,8 @@
 package cz.vutbr.feec.watchwithmobile;
 
 
+import android.util.Log;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -33,13 +35,13 @@ public class utils {
 
 
     }
-    //function to reverse bytes of rand number from C, 32bytes
+    //function to reverse bytes of rand number from C, 32bytes or 28 should work too
     public static byte[] reverseByte32(byte[] reverseMe)
     {
-        byte [] newByte= new byte[32];
+        byte [] newByte= new byte[reverseMe.length];
         int c=3;
         int ctr=0;
-        int i=31;
+        int i=reverseMe.length-1;
         while(i>-1)
         {
             if (c==-1) {
@@ -55,6 +57,7 @@ public class utils {
     //function to reverse bytes of a point passed from C(64bytes), for some reason this has to be done, either micro-ecc stores points differently, or converting from intarr to bytearr makes it, not sure
     public static byte[] reverseByte(byte[] reverseMe)
     {
+
         byte [] newByte= new byte[64];
        int c=3;
        int ctr=0;
@@ -114,6 +117,17 @@ public class utils {
             return buf;
         }
     }
+    public static byte[] bytesFromBigInteger2(BigInteger n)
+    {
+        byte b [] =n.toByteArray();
+        if (b[0] == 0)
+        {
+            byte[] tmp = new byte[b.length - 1];
+            System.arraycopy(b, 1, tmp, 0, tmp.length);
+            b = tmp;
+        }
+        return b;
+    }
     //functions to get cords from byte we got from C
     public static BigInteger getXCord(byte [] cord)
     {
@@ -158,5 +172,95 @@ public class utils {
         return result;
     }
 
+    public static  byte[] FixForC56(byte[] toFix)
+    {
+        byte [] newByte= new byte[64];
+        byte [] x=Arrays.copyOfRange(toFix,0,28);
+        byte [] y= Arrays.copyOfRange(toFix,28,toFix.length);
+        for(int i=0;i<28;i++)
+        {
+            newByte[i]=x[27-i];
+        }
+        for (int i=0;i<4;i++)
+        {
+            newByte[i+28]=(byte)0x00;
+        }
+        //Log.i("apdu","isa");
+        for (int i=0;i<28;i++)
+        {
+            newByte[i+32]=y[27-i];
+        }
+        //Log.i("apdu","isa");
+        for (int i=0;i<4;i++)
+        {
+            newByte[i+60]=(byte)0x00;
+        }
+        //Log.i("apdu","isa");
+        return  newByte;
+    }
+    public static byte[] FixFromC56(byte[] toFix)
+    {
+        byte [] newByte= new byte[56];
+        byte [] x=Arrays.copyOfRange(toFix,0,28);
+        byte [] y= Arrays.copyOfRange(toFix,32,toFix.length-4);
+        for(int i=0;i<28;i++)
+        {
+            newByte[i]=x[27-i];
+        }
+        for (int i=0;i<28;i++)
+        {
+            newByte[i+28]=y[27-i];
+        }
+        return  newByte;
 
+    }
+    public static  byte[]FixForC64(byte[] toFix)
+    {
+        if(toFix.length==64)
+        {
+            byte[] newByte = new byte[64];
+            byte[] x = Arrays.copyOfRange(toFix, 0, 32);
+            byte[] y = Arrays.copyOfRange(toFix, 32, toFix.length);
+            for (int i = 0; i < 32; i++) {
+                newByte[i] = x[31 - i];
+            }
+            for (int i = 0; i < 32; i++) {
+                newByte[i + 32] = y[31 - i];
+            }
+            return newByte;
+        }
+        else if(toFix.length==56) //if we pass 56bytes long points to C we have to reverse them and pad them with zeros, so the point is in same format as in micro-ecc
+        {
+            byte [] newByte= new byte[64];
+            byte [] x=Arrays.copyOfRange(toFix,0,28);
+            byte [] y= Arrays.copyOfRange(toFix,28,toFix.length);
+            for(int i=0;i<28;i++)
+            {
+                newByte[i]=x[27-i];
+            }
+            for (int i=0;i<4;i++)
+            {
+                newByte[i+28]=(byte)0x00;
+            }
+            for (int i=0;i<28;i++)
+            {
+                newByte[i+32]=y[27-i];
+            }
+            for (int i=0;i<4;i++)
+            {
+                newByte[i+60]=(byte)0x00;
+            }
+            return  newByte;
+        }
+        return null;
+    }
+    public static byte[] FixForC32(byte[] toFix)
+    {
+        byte[] newByte = new byte[toFix.length];
+        for (int i = 0; i < toFix.length; i++)
+        {
+            newByte[i] = toFix[toFix.length-1 - i];
+        }
+        return newByte;
+    }
 }

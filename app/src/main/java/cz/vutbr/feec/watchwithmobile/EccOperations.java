@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import org.spongycastle.jce.ECNamedCurveTable;
 import org.spongycastle.math.ec.ECCurve;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -44,29 +45,38 @@ public class EccOperations {
             (byte)0x44,
             (byte)0x55,
     };
-    BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
-    final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
-    BigInteger A = new BigInteger("0");
-    BigInteger B= new BigInteger("7");
-    ECCurve curve = new ECCurve.Fp(prime,A,B);
-    BigInteger Gx= new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
-    BigInteger Gy= new BigInteger("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16);
-    ECPoint G = curve.createPoint(Gx,Gy);
-    BigInteger G2 = new BigInteger("0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",16);
+    //BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
+    //final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
+    //BigInteger A = new BigInteger("0");
+    //BigInteger B= new BigInteger("7");
+    //ECCurve curve = new ECCurve.Fp(prime,A,B);
+   // BigInteger Gx= new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
+    //BigInteger Gy= new BigInteger("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16);
+    //ECPoint G = curve.createPoint(Gx,Gy);
+    //BigInteger G2 = new BigInteger("0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",16);
     BigInteger rand=null;
     byte[] Send=null;
-    ECCurve ellipticCurve= new ECCurve.Fp(prime,A,B);
-    BigInteger SecKey= new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16); //generating keys is going to be implemented, not needed now for what we do
+    //ECCurve ellipticCurve= new ECCurve.Fp(prime,A,B);
+
+    //ECCurve ec2=
+    BigInteger SecKey;
+    //BigInteger SecKey= new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16); //generating keys is going to be implemented, not needed now for what we do
     //BigInteger PubKey= new BigInteger("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",16);
     ECPoint pubKey=null;
-    BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
-    byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
+    //BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
+    BigInteger pubServerBig;
+   // byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
+   byte [] ServerPubKeyBytes;
     private SecretKey AESKey;
     private byte[] lastAESIV;
     private byte [] TvPoint;
+    CurvesSpecifics cs;
     public EccOperations() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-
-        pubKey= G.multiply(SecKey);
+        cs= new CurvesSpecifics();
+        SecKey=Options.getPrivateKey();
+        pubKey= cs.getG().multiply(SecKey);
+        pubServerBig=Options.getServerPubKey256();
+        ServerPubKeyBytes= pubServerBig.toByteArray();
 
     }
     //returns public key
@@ -80,14 +90,14 @@ public class EccOperations {
     {
         do {
             Random randNum = new Random();
-            rand = new BigInteger(n.bitLength(), randNum);
-        } while (rand.compareTo(n) >= 0);
+            rand = new BigInteger(cs.getN().bitLength(), randNum);
+        } while (rand.compareTo(cs.getN()) >= 0);
         return rand;
     }
     //function was used to generate random points in java with random from java, next with random from C for testing and now it is not really used anymore
     public byte[] getRandPoint(){
         //rand=generateRandom();
-        ECPoint S= G.multiply(rand);
+        ECPoint S= cs.getG().multiply(rand);
         Send= S.getEncoded(true);
         /*BigInteger Se= rand.multiply(G2).mod(prime);
         Send= bytesFromBigInteger(Se);*/
@@ -98,7 +108,7 @@ public class EccOperations {
     {
         BigInteger M = null;
         BigInteger hashBig= new BigInteger(1,hash);
-        M= rand.add(hashBig.multiply(SecKey)).mod(n);
+        M= rand.add(hashBig.multiply(SecKey)).mod(cs.getN());
         byte [] M2= bytesFromBigInteger(M);
 
         return  M2;
@@ -127,16 +137,16 @@ public class EccOperations {
     }
     //functions takes random number from c and sets it here, mod(n) would probably not be needed, but just to make sure :)
     public void setRand(BigInteger rand) {
-        this.rand = rand.mod(n);
+        this.rand = rand.mod(cs.getN());
     }
     //from C we have bytearray of X and Y cord, but spongy/bouncy only accepts bigint as x and y cords
     public byte [] getCompPointFromCord(byte[] cords)
     {
         BigInteger Px= utils.getXCord(cords);
         BigInteger Py= utils.getYCord(cords);
-        ECPoint ecPoint=curve.createPoint(Px,Py); //create ecpoint so we can compress it
+        ECPoint ecPoint=cs.getCurve().createPoint(Px,Py); //create ecpoint so we can compress it
         try {
-            curve.validatePoint(Px, Py);
+            cs.getCurve().validatePoint(Px, Py);
         }
         catch ( Exception e)
         {
@@ -162,7 +172,7 @@ public class EccOperations {
         BigInteger pubByte = PUK.getAffineX();
         BigInteger pubByteY= PUK.getAffineY();
 
-        ECPoint PUKA= ellipticCurve.createPoint(PUK.getAffineX(),PUK.getAffineY());
+        ECPoint PUKA= cs.getCurve().createPoint(PUK.getAffineX(),PUK.getAffineY());
 
         byte [] publicKeyA= PUKA.getEncoded(true);
         Log.i("APDUKEY","public key is "+utils.bytesToHex(publicKeyA));
@@ -173,50 +183,62 @@ public class EccOperations {
     public boolean verifyServer(byte[] sv, byte [] ev,byte[] message) throws NoSuchAlgorithmException, IOException {
         long startTime = System.nanoTime();
         verServerMessage=message;
-        ECPoint PubServerEC= ellipticCurve.decodePoint(ServerPubKeyBytes);
-        //BigInteger svBig= new BigInteger(1,sv);
-        //BigInteger evBig=new BigInteger(1,ev);
-        /*ECPoint Gsv=G.multiply(svBig);
-        Log.i("APDU","Gsv is "+utils.bytesToHex(Gsv.getEncoded(true)));
-        ECPoint PkEv=PubServerEC.multiply(evBig);
-        Log.i("APDU","PkEv is "+utils.bytesToHex(PkEv.getEncoded(true)));
-        ECPoint tv= Gsv.add(PkEv);*/
+        ECPoint PubServerEC= cs.getCurve().decodePoint(ServerPubKeyBytes);
+
         long startTime2=System.nanoTime();
         //start of C implementation its around 10 times faster than the same in java (6ms vs 60ms)
-        byte[] pubCByte=PubServerEC.getEncoded(false);
+        if(Options.SECURITY_LEVEL==1)
+        {
+            return false;
+        }
+        else if(Options.SECURITY_LEVEL==2)
+        {
+            byte[] pubCByte = PubServerEC.getEncoded(false);
+            pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
+            /*int[] intCPub = utils.byteArrayToItArray(utils.reverseByte(pubCByte));//reversing the order of bytes to work in C and also making them int arr to work in C
+            int[] intSvC = utils.byteArrayToItArray(utils.reverseByte32(sv));
+            int[] intEvC = utils.byteArrayToItArray(utils.reverseByte32(ev));
+            int[] intTvC = verSignServer(intSvC, intCPub, intEvC);
+            byte[] tvC = utils.intArrtoByteArr(intTvC);
+            tvC = utils.reverseByte(tvC);*/
+            byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+            if(Options.SECURITY_LEVEL==1)
+                tvC=utils.FixFromC56(tvC);
+            else
+                tvC=utils.FixForC64(tvC);
+            byte[] compTvC = getCompPointFromCord(tvC);
+            TvPoint = compTvC;
+            Log.i("APDU", "from C tv is " + utils.bytesToHex(compTvC));
+            long duration2 = System.nanoTime() - startTime2;
+            Log.i("APDU", "Ver in C took " + duration2 / 1000000 + " ms");
+            //end of C implementation
 
-        pubCByte= Arrays.copyOfRange(pubCByte,1,pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
-        int[] intCPub=utils.byteArrayToItArray(utils.reverseByte(pubCByte));//reversing the order of bytes to work in C and also making them int arr to work in C
-        int[] intSvC=utils.byteArrayToItArray(utils.reverseByte32(sv));
-        int[] intEvC=utils.byteArrayToItArray(utils.reverseByte32(ev));
-
-        int[] intTvC=verSignServer(intSvC,intCPub,intEvC);
-
-        byte[] tvC=utils.intArrtoByteArr(intTvC);
-        tvC=utils.reverseByte(tvC);
-        byte [] compTvC= getCompPointFromCord(tvC);
-        TvPoint=compTvC;
-        Log.i("APDU","from C tv is "+utils.bytesToHex(compTvC));
-        long duration2=System.nanoTime()-startTime2;
-        Log.i("APDU","Ver in C took "+duration2/1000000+" ms");
-        //end of C implementation
-
-        /*Log.i("APDU","tv is "+utils.bytesToHex(tv.getEncoded(true)));
-        Log.i("APDU","ev is "+utils.bytesToHex(ev));
-        Log.i("APDU","sv is "+utils.bytesToHex(sv));*/
+            boolean isItLegit=compareHashesOfServer(ev);
+            long duration = System.nanoTime() - startTime;
+            Log.i("APDU", "All and all verify took  " + duration / 1000000 + " ms");
+            if(isItLegit)
+                return true;
+            //if(utils.isEqual(hashToVer,ev))
+                //return true;
+        }
+            return false;
+    }
+    public boolean compareHashesOfServer(byte [] ev) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = null;
-        digest = MessageDigest.getInstance("SHA-256");
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        String hashFunction;
+        if(Options.SECURITY_LEVEL==1)
+            hashFunction="SHA-244";
+        else
+            hashFunction="SHA-256";
+        digest = MessageDigest.getInstance(hashFunction);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         outputStream.write(ID);
-        outputStream.write(utils.bytesFromBigInteger(n));
-        outputStream.write(compTvC);
-        byte connectedBytes[] = outputStream.toByteArray( );
-        byte [] hashToVer = digest.digest(connectedBytes);
-        Log.i("APDU","hashToVer is  "+utils.bytesToHex(hashToVer));
+        outputStream.write(utils.bytesFromBigInteger(cs.getN()));
+        outputStream.write(TvPoint);
+        byte connectedBytes[] = outputStream.toByteArray();
+        byte[] hashToVer = digest.digest(connectedBytes);
+        Log.i("APDU", "hashToVer is  " + utils.bytesToHex(hashToVer));
         outputStream.close();
-        long duration=System.nanoTime()-startTime;
-        Log.i("APDU","All and all verify took  "+duration/1000000+" ms");
-
         if(utils.isEqual(hashToVer,ev))
             return true;
         else
@@ -225,13 +247,20 @@ public class EccOperations {
     }
 
     public byte [] generateProof2() throws NoSuchAlgorithmException, IOException {
-        int[] intT=randPoint();
-        byte []t=utils.reverseByte(utils.intArrtoByteArr(intT));
+
+        byte []t;
+        if(Options.SECURITY_LEVEL==1)
+            t=utils.FixFromC56(randPoint2());
+        else
+            t=utils.FixForC64(randPoint2());
         t=getCompPointFromCord(t);
-        int[] randNumberInt=randReturn();
-        byte[] randNumber=utils.reverseByte32(utils.intArrtoByteArr(randNumberInt));
-        int[] intTk=generateTk();
-        byte[] Tk=utils.reverseByte(utils.intArrtoByteArr(intTk));
+        byte[] randNumber=utils.FixForC32(randReturn2(Options.SECURITY_LEVEL));
+
+        byte [] Tk=generateTk2();
+        if(Options.SECURITY_LEVEL==1)
+            Tk=utils.FixFromC56(Tk);
+        else
+            Tk=utils.FixForC64(Tk);
         Tk=getCompPointFromCord(Tk);
 
         MessageDigest digest = null;
@@ -247,8 +276,8 @@ public class EccOperations {
         outputStream.reset();
 
 
-        BigInteger mid= ((new BigInteger(1,hash)).multiply(SecKey)).mod(n);
-        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(n);
+        BigInteger mid= ((new BigInteger(1,hash)).multiply(SecKey)).mod(cs.getN());
+        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
         byte [] signature= utils.bytesFromBigInteger(sv);
         outputStream.write(MYID);
         outputStream.write(hash);
@@ -260,15 +289,28 @@ public class EccOperations {
     }
     byte[] hashForBoth;
     public byte[] GenerateProofWithWatch(byte[] Tk2, byte[] t1) throws NoSuchAlgorithmException, IOException {
-        int[] intRandPoint=randPoint();
-        byte []randPoint=utils.reverseByte(utils.intArrtoByteArr(intRandPoint));
+
+        byte []randPoint;
+        if(Options.SECURITY_LEVEL==1)
+            randPoint=utils.FixFromC56(randPoint2());
+        else
+            randPoint=utils.FixForC64(randPoint2());
         randPoint=getCompPointFromCord(randPoint);
-        int[] randNumberInt=randReturn();
-        byte[] randNumber=utils.reverseByte32(utils.intArrtoByteArr(randNumberInt));
-        int[] TfromC=generateTWithWatch(getCPointFromCompressedByte(t1));
-        byte[] t=getCompPointFromCPoint(TfromC);
-        int[] TkFromC=generateTkWithWatch(getCPointFromCompressedByte(Tk2));
-        byte[] Tk=getCompPointFromCPoint(TkFromC);
+        byte[] randNumber=utils.FixForC32(randReturn2(Options.SECURITY_LEVEL));
+
+        byte [] t=generateTWithWatch2(getCBytePointFromCompressedByte(t1));
+        if(Options.SECURITY_LEVEL==1)
+            t=utils.FixFromC56(t);
+        else
+            t=utils.FixForC64(t);
+        t=getCompPointFromCord(t);
+
+        byte[] Tk=generateTkWithWatch2(getCBytePointFromCompressedByte(Tk2));
+        if(Options.SECURITY_LEVEL==1)
+            Tk=utils.FixFromC56(Tk);
+        else
+            Tk=utils.FixForC64(Tk);
+        Tk=getCompPointFromCord(Tk);
         Log.i("APDU","Tk is"+utils.bytesToHex(Tk));
         Log.i("APDU","t is "+utils.bytesToHex(t));
         MessageDigest digest = null;
@@ -282,8 +324,8 @@ public class EccOperations {
         hashForBoth = digest.digest(connectedBytes);
         Log.i("APDU","Hash for both is "+utils.bytesToHex(hashForBoth));
         outputStream.reset();
-        BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(SecKey)).mod(n);
-        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(n);
+        BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(SecKey)).mod(cs.getN());
+        BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
         byte [] signature= utils.bytesFromBigInteger(sv);
         Log.i("APDU","sig from phone is "+utils.bytesToHex(signature));
         outputStream.write(MYID);
@@ -302,11 +344,20 @@ public class EccOperations {
     }
     public int[] getCPointFromCompressedByte(byte[] compressedPoint)
     {
-        ECPoint point= curve.decodePoint(compressedPoint);
+        ECPoint point= cs.getCurve().decodePoint(compressedPoint);
         byte[] uncompressedJavaPoint=point.getEncoded(false);
         uncompressedJavaPoint=Arrays.copyOfRange(uncompressedJavaPoint,1,uncompressedJavaPoint.length);
         int[] CReadyPoint=utils.byteArrayToItArray(utils.reverseByte(uncompressedJavaPoint));
         return CReadyPoint;
+    }
+    public byte[] getCBytePointFromCompressedByte(byte[] compressedPoint)
+    {
+        ECPoint point= cs.getCurve().decodePoint(compressedPoint);
+        byte[] uncompressedJavaPoint=point.getEncoded(false);
+        byte []uncompressedPoint=Arrays.copyOfRange(uncompressedJavaPoint,1,uncompressedJavaPoint.length);
+        uncompressedPoint=utils.FixForC64(uncompressedPoint);
+        return uncompressedPoint;
+
     }
     public byte[] getCompPointFromCPoint(int[] CPoint)
     {
@@ -339,12 +390,14 @@ public class EccOperations {
         byte[] decrypted= AESGCMClass.decrypt(AESed,AESKey,IV);
         return decrypted;
     }
-    public native int[] verSignServer(int[] sv, int [] pub, int [] ev);
-    public native int[] randPoint();
-    public native int [] randReturn();
-    public native int [] generateTk();
-    public native int[] generateTWithWatch(int[] t1);
-    public native int [] generateTkWithWatch(int[] tk2);
+
+    public native byte[] verSignServer2(byte[] sv, byte [] pub, byte [] ev, int SecLevel);
+    
+    public native byte[] randPoint2();
+    public native byte[] randReturn2(int SevLevel);
+    public native byte[] generateTk2();
+    public native byte[] generateTWithWatch2(byte[] t1);
+    public native byte[] generateTkWithWatch2(byte[] tk2);
 
 
     public byte[] getTvPoint() {

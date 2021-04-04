@@ -80,6 +80,19 @@ public class MainActivity extends AppCompatActivity {
         startService(intent); //start MyHostApduService
 
         Log.i("sap", "starting service?");
+        Options op= new Options(this);
+        //op.SaveKey(new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16));
+        op.LoadKey();
+        //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
+        op.LoadServerKey();
+        try {
+            Test t=new Test();
+            t.doSth();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidAlgorithmParameterException e) {
+            e.printStackTrace();
+        }
     }
 
 

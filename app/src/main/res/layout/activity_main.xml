@@ -14,6 +14,6 @@
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
-        android:text="Waiting for a message from the watch" />
+        android:text="Phone is ready, you can touch the NFC reader" />
 
 </LinearLayout>

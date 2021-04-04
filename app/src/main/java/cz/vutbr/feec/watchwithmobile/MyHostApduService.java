@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Path;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Build;
 import android.os.Bundle;
@@ -48,10 +49,12 @@ public class MyHostApduService extends HostApduService {
         HandlerThread handlerThread = new HandlerThread("ht");
         handlerThread.start();
         Looper looper = handlerThread.getLooper();
-        //Handler handler = new Handler(looper);
+        Handler handler = new Handler(looper);
         //this.registerReceiver(messageReceiver, messageFilter,null,handler);
+        //we are using modified LBM that should run on second thread, with classic LBM program gets stuck
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
         new SendMessage("/path3",A_OKAY).start();
+
         return START_NOT_STICKY;
     }
 
@@ -111,85 +114,6 @@ public class MyHostApduService extends HostApduService {
 
         }
 
-        //reader wants random point, generate it and return it as byte
-        /*else if (utils.isCommand(GIVERAND,commandApdu))
-        {
-
-            SendMessage sm=new SendMessage("/path3", GIVERAND);
-            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            long start=System.nanoTime(); //benchmarking
-            int [] randIntArr=randPoint(); //calling C function randPoint()
-            byte[] randPoint = utils.intArrtoByteArr(randIntArr); //conversion of int array to byte array
-            randPoint=utils.reverseByte(randPoint); //reversing bytes to correct order
-            int[] randNumArr=randReturn(); // C function returns the random number it used to generate random point
-            byte[] randNum=utils.intArrtoByteArr(randNumArr);
-
-            randNum=utils.reverseByte32(randNum);
-
-            new SendMessage("/path1", randNum).start();
-            eccOperations.setRand(new BigInteger(1,randNum)); //we will use that random number to generate proof
-            byte [] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
-            try {
-                RandPointResponse=utils.appendByteArray(RandPointResponse,A_OKAY);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            long end=System.nanoTime();
-
-            Log.i(TAG,"In C generating random number and calculating random point took "+(end-start)/1000000+" ms") ;
-            Log.i(TAG,"APDU_COMMAND_0x01 triggered. Response: "+utils.bytesToHex(RandPointResponse));
-            return RandPointResponse;
-        }*/
-       /* else if (utils.isCommand(RANDWATCH,commandApdu)&&Example.GotRandWatch==false)
-        {
-            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            return NOTYET;
-        }
-        else if (utils.isCommand(RANDWATCH,commandApdu)&&Example.GotRandWatch==true)
-        {
-            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            return RandFromWatch;
-        }
-        //reader wants us to sign the challenge
-        else if (utils.isCommand(SIGNTHIS,commandApdu))
-        {
-            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            //we take the data from the command, it's the hash we need to sign
-            byte [] hash= Arrays.copyOfRange(commandApdu,5,37);
-            Log.i(TAG,"APDU_COMMAND_0x02 triggered. Hash to sign is: "+utils.bytesToHex(hash)) ;
-
-
-            SendMessage sm=new SendMessage("/path2", hash);
-            sm.start();
-            try {
-                sm.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            Start=System.nanoTime(); //for use of benchmarking
-            final byte [] SignResponse = eccOperations.SignHash(hash);
-
-
-
-            Log.i(TAG,"Response to 0x02: "+utils.bytesToHex(SignResponse)) ;
-            return SignResponse;
-        }
-        else if (utils.isCommand(WATCHTHIS,commandApdu)&& Example.GotIt==false){
-            return NOTYET ;
-        }
-        else if (utils.isCommand(WATCHTHIS,commandApdu)&& Example.GotIt==true)
-        {
-
-            if (signedFromWatch!=null)
-            {
-                Log.i(TAG,"Response to 0x03: "+utils.bytesToHex(signedFromWatch)) ;
-                return signedFromWatch;
-            }
-            else
-                Log.i(TAG,"it was not done in time ") ;
-                return null;
-        }*/
         else if (utils.isCommand(SERVERSIGCOM,commandApdu))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
@@ -222,8 +146,9 @@ public class MyHostApduService extends HostApduService {
         else if (utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(!m1sent))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
-            byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
+
+            byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
+            byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
             try {
 
                 if(eccOperations.verifyServer(sv,ev,commandApdu))
@@ -326,24 +251,7 @@ public class MyHostApduService extends HostApduService {
 
         }
 
-        /*public class Receiver extends BroadcastReceiver {
-            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if(intent.getStringExtra("path").equals("2")){
-                    signedFromWatch = intent.getByteArrayExtra("message");
-                    Log.i(TAG,"I got it from the watch");
-                    Log.i(TAG,"Signed from watch is : "+utils.bytesToHex(signedFromWatch)) ;
-                    long End= System.nanoTime();
-                    long Duration= End-Start;
-                    Log.i(TAG, "It took "+Duration/1000000+"ms");
-                    GotIt=true;
-                    return;
 
-                }
-
-            }
-        }*/
     }
     public class Receiver extends BroadcastReceiver {
         @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -371,9 +279,9 @@ public class MyHostApduService extends HostApduService {
                 Example.gotFirstLBM=true;
                 Log.i(TAG,"got path1 in LBM");
                 byte[] Tk2T1=intent.getByteArrayExtra("data");
-                byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,33);
+                byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,Options.BYTELENGHT+1);
                 Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
-                byte[] T1= Arrays.copyOfRange(Tk2T1,33,Tk2T1.length);
+                byte[] T1= Arrays.copyOfRange(Tk2T1,Options.BYTELENGHT+1,Tk2T1.length);
                 Log.i(TAG,"T1 is "+utils.bytesToHex(T1));
                 try {
                     halfMsg=eccOperations.GenerateProofWithWatch(Tk2,T1);
@@ -392,6 +300,7 @@ public class MyHostApduService extends HostApduService {
 
         }
     }
+    //just some thread test that dowsnt work, but mby it will be usefull in the future, or get deleted lol
     /*public void waitForBroadcast() throws InterruptedException {
         final CountDownLatch gate = new CountDownLatch(1);
         IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);

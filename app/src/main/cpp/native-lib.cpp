@@ -23,8 +23,8 @@ Java_cz_vutbr_feec_klasovity_microeccimp_MainActivity_stringFromJNI(
 
 uECC_Curve curve=uECC_secp256k1();
 const wordcount_t nativeNCount = uECC_curve_num_n_words(uECC_secp256k1());
-
-
+jbyte* pointTv=reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+jbyte * rando2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
 
 //function to verify proof of knowledge in C
 extern "C"
@@ -125,7 +125,6 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk(JNIEnv *env, jobject
     jintArray newArray = env->NewIntArray(nativeNCount*4);
     env->SetIntArrayRegion(newArray,0,nativeNCount*4 ,point1);
     return newArray;
-
 }
 
 extern "C"
@@ -137,6 +136,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn(JNIEnv *env, jobject
 
 }
 jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[nativeNCount *2]());
+jbyte* randPoint2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
 //function for generating random point in C
 extern "C"
 JNIEXPORT jintArray  JNICALL
@@ -154,6 +154,113 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject 
     env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, randPoint);//we release the array for Java to use
 
     return newArray;
+}
+
+
+
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint2(JNIEnv *env, jobject thiz) {
+    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando2), curve->n, nativeNCount); //generate random number max is n of curve
+    const uECC_word_t* g = uECC_curve_G(curve);
+
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint2), g,
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve); //multiply G with random number, save to rando
+
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,randPoint2);
+    return newArray;
+}
+
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn2(JNIEnv *env, jobject /* this */,jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
+    int byteLenght=0;
+    if (SecLevel==1)
+        byteLenght=28;
+    else
+        byteLenght=32;
+    jbyteArray newArray = env->NewByteArray(byteLenght);
+    env->SetByteArrayRegion(newArray,0,byteLenght ,rando2);
+    return newArray;
+}
+
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk2(JNIEnv *env, jobject /* this */) { //just a function to return random number to C, only call this after randPoint has been called
+    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1),
+                    reinterpret_cast<const uECC_word_t *>(pointTv),
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve);
+
+    jbyteArray newArray = env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64 ,point1);
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray t1) {
+    jbyteArray ct1= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(t1, NULL));
+    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(ct1),
+                   reinterpret_cast<const uECC_word_t *>(randPoint2),
+                   reinterpret_cast<uECC_word_t *>(point1), curve);
+
+    jbyteArray newArray = env->NewByteArray(64); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetByteArrayRegion(newArray, 0,64, point1);//we release the array for Java to use
+
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray tk2) {
+    jbyteArray cTk2= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(tk2, NULL));
+
+    jbyte* TvR= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(TvR),
+                    reinterpret_cast<const uECC_word_t *>(pointTv),
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve);
+    jbyte* tk= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(TvR),
+                   reinterpret_cast<const uECC_word_t *>(cTk2), reinterpret_cast<uECC_word_t *>(tk), curve);
+
+    jbyteArray newArray = env->NewByteArray(64); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetByteArrayRegion(newArray, 0,64, tk);//we release the array for Java to use
+
+    return newArray;
+}
+
+
+
+
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_Test_randPoint2(JNIEnv *env, jobject thiz) {
+    curve=uECC_secp224r1();
+    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando2), curve->n, nativeNCount); //generate random number max is n of curve
+    const uECC_word_t* g = uECC_curve_G(curve);
+
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint2), g,
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve); //multiply G with random number, save to rando
+
+    //jintArray newArray = env->NewIntArray(nativeNCount * 4); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    //env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, randPoint);//we release the array for Java to use
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,randPoint2);
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_Test_randReturn(JNIEnv *env, jobject /* this */,jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
+    int byteLenght=0;
+    if (SecLevel==1)
+        byteLenght=28;
+    else
+        byteLenght=32;
+    jbyteArray newArray = env->NewByteArray(byteLenght);
+    env->SetByteArrayRegion(newArray,0,byteLenght ,rando2);
+    return newArray;
+
 }
 extern "C"
 JNIEXPORT jintArray JNICALL
@@ -186,4 +293,79 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch(JNIEnv *env
     env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, tk);//we release the array for Java to use
 
     return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_Test_giveBack(JNIEnv *env, jobject /* this */,jbyteArray pub,jbyteArray mul) {
+    jbyteArray cPub= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(pub, NULL));
+    //jintArray cPub2= reinterpret_cast<jintArray>(env->GetIntArrayElements(pub, NULL));
+    //jintArray cMul= reinterpret_cast<jintArray>(env->GetIntArrayElements(mul, NULL));
+    jbyteArray cMul=reinterpret_cast<jbyteArray>(env->GetByteArrayElements(mul, NULL));
+    jbyte * point22= reinterpret_cast<jbyte *>(new uECC_word_t[8]());
+    const uECC_word_t* g = uECC_curve_G(uECC_secp224r1());
+    /*uECC_point_add(reinterpret_cast<const uECC_word_t *>(cPub),
+                   g,
+                   reinterpret_cast<uECC_word_t *>(point22), uECC_secp224r1());*/
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point22),
+                    reinterpret_cast<const uECC_word_t *>(cPub),
+                    reinterpret_cast<const uECC_word_t *>(cMul), uECC_secp224r1());
+    //const wordcount_t nativeNCount2 = 4;
+    jbyteArray newArray = env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray, 0, 64, reinterpret_cast<const jbyte *>(point22));//we release the array for Java to use
+
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_Test_randPoint(JNIEnv *env, jobject thiz) {
+
+    const uECC_word_t* n = uECC_curve_n(uECC_secp224r1());
+    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando), uECC_secp224r1()->n, uECC_curve_num_n_words(uECC_secp224r1())); //generate random number max is n of curve
+    const uECC_word_t* g = uECC_curve_G(uECC_secp224r1());
+
+   /* jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[7]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint), g,
+                    reinterpret_cast<const uECC_word_t *>(rando), uECC_secp224r1());*/ //multiply G with random number, save to rando
+
+    jbyteArray newArray = env->NewByteArray(64); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    env->SetByteArrayRegion(newArray, 0, 64,
+                            reinterpret_cast<const jbyte *>(uECC_curve_G(uECC_secp224r1())));//we release the array for Java to use
+
+    return newArray;
+
+}
+
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer2(JNIEnv *env, jobject thiz,jbyteArray sv, jbyteArray pub, jbyteArray ev,jint SecLevel) {
+    if(SecLevel==1)
+        curve=uECC_secp224r1();
+    else if(SecLevel==2)
+        curve=uECC_secp256k1();
+    jbyteArray cPub= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(pub, NULL));
+    jbyteArray cSv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(sv, NULL));
+    jbyteArray cEv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(ev, NULL));
+    //jintArray cSv= reinterpret_cast<jintArray>(env->GetIntArrayElements(sv, NULL));
+    //jintArray cEv= reinterpret_cast<jintArray>(env->GetIntArrayElements(ev, NULL));
+    const uECC_word_t* g = uECC_curve_G(curve);
+    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1), g,
+                    reinterpret_cast<const uECC_word_t *>(cSv), curve);
+    jbyte* point2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point2),
+                    reinterpret_cast<const uECC_word_t *>(cPub),
+                    reinterpret_cast<const uECC_word_t *>(cEv), curve);
+
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
+                   reinterpret_cast<const uECC_word_t *>(point2),
+                   reinterpret_cast<uECC_word_t *>(tv), curve);
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
+                   reinterpret_cast<const uECC_word_t *>(point2),
+                   reinterpret_cast<uECC_word_t *>(pointTv), curve);
+
+
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,pointTv);
+    return newArray;
+
 }
