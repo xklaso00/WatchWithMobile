@@ -19,48 +19,60 @@ Java_cz_vutbr_feec_klasovity_microeccimp_MainActivity_stringFromJNI(
 }
 
 
-uECC_Curve curve=uECC_secp256k1();
+uECC_Curve curve=uECC_secp224r1();
 const wordcount_t nativeNCount = uECC_curve_num_n_words(uECC_secp256k1());
+int byteLenght=28;
 //jbyte* rando = reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount*4]());
-jint *rando= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2]());
+
 //return random number used to java
-extern "C"
-JNIEXPORT jintArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn(JNIEnv *env, jobject /* this */) {
-    jintArray newArray = env->NewIntArray(nativeNCount*2);
 
-    env->SetIntArrayRegion(newArray,0,nativeNCount*2 ,rando);
+//functions v2 start here
+jbyte * rando2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPointWatch(JNIEnv *env, jobject thiz,jint SecLevel) {
+    if(SecLevel==2) {
+        curve = uECC_secp256k1();
+        byteLenght=32;
+    }
+    else{
+        curve=uECC_secp224r1();
+        byteLenght=28;
+    }
+
+    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando2), curve->n, nativeNCount); //generate random number max is n of curve
+    const uECC_word_t* g = uECC_curve_G(curve);
+    jbyte * randPoint2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint2), g,
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve); //multiply G with random number, save to rando
+
+    jbyteArray newArray=env->NewByteArray(byteLenght*2);
+    env->SetByteArrayRegion(newArray,0,byteLenght*2,randPoint2);
     return newArray;
-
 }
-//generate random point, same as NFC version
+
 extern "C"
-JNIEXPORT jintArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject /* this */) {
+JNIEXPORT jbyteArray JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturnWatch(JNIEnv *env, jobject /* this */,jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
 
-    const uECC_word_t* n = uECC_curve_n(uECC_secp256k1());
-    uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando), uECC_secp256k1()->n, nativeNCount);
-    const uECC_word_t* g = uECC_curve_G(uECC_secp256k1());
-    jint* randPoint = reinterpret_cast<jint *>(new uECC_word_t[nativeNCount *2]());
-    uECC_point_mult(reinterpret_cast<uECC_word_t *>(randPoint), g,
-                    reinterpret_cast<const uECC_word_t *>(rando), curve);
-    jintArray newArray = env->NewIntArray(nativeNCount * 4);
-    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, randPoint);
-
+    if (SecLevel==1)
+        byteLenght=28;
+    else
+        byteLenght=32;
+    jbyteArray newArray = env->NewByteArray(byteLenght);
+    env->SetByteArrayRegion(newArray,0,byteLenght ,rando2);
     return newArray;
-
-
 }
 extern "C"
-JNIEXPORT jintArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_CforTk2(JNIEnv *env, jobject /* this */,jintArray Tv) {
-    jintArray cTv= reinterpret_cast<jintArray>(env->GetIntArrayElements(Tv, NULL));
-    jint* point1= reinterpret_cast<jint *>(new uECC_word_t[nativeNCount*2 ]());
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_CforTk2Watch(JNIEnv *env, jobject /* this */,jbyteArray Tv) {
+    jbyteArray cTv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(Tv, NULL));
+    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1),
                     reinterpret_cast<const uECC_word_t *>(cTv),
-                    reinterpret_cast<const uECC_word_t *>(rando), curve);
-    jintArray newArray = env->NewIntArray(nativeNCount * 4);
-    env->SetIntArrayRegion(newArray, 0,nativeNCount * 4, point1);
+                    reinterpret_cast<const uECC_word_t *>(rando2), curve);
+    jbyteArray newArray = env->NewByteArray(byteLenght*2);
+    env->SetByteArrayRegion(newArray, 0,byteLenght*2, point1);
     return newArray;
 
 }

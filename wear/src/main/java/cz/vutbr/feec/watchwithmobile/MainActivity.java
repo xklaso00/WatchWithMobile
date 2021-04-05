@@ -1,6 +1,7 @@
 package cz.vutbr.feec.watchwithmobile;
 
 import android.content.BroadcastReceiver;
+import android.graphics.Path;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -33,7 +34,7 @@ public class MainActivity extends WearableActivity {
         System.loadLibrary("native-lib");
     }
     utils utils= new utils();
-    EccOperations eccOperations=new EccOperations();
+    EccOperations eccOperations;
     private TextView textView;
     Button talkButton;
     byte[] randPoint=null;
@@ -55,7 +56,11 @@ public class MainActivity extends WearableActivity {
         setContentView(R.layout.activity_main);
         textView =  findViewById(R.id.text);
         talkButton =  findViewById(R.id.talkClick);
-
+        Options op= new Options(this);
+        //op.SaveKey(new BigInteger("E83FC87A037C19A2E606033F506A7035DD795F3B8E77064991EB125C234686DC",16));
+        //op.SaveKey(new BigInteger("929DED4DF80925348838B9D9F73F4DBA99BF08474B8BF277BFB5BC7D",16));
+        op.LoadKey();
+        eccOperations=new EccOperations();
 //Create an OnClickListener//
         talkButton.setOnClickListener(new View.OnClickListener() {
                                           @Override
@@ -66,42 +71,7 @@ public class MainActivity extends WearableActivity {
                                               textView.setText("Communication has been reseted!");
                                           }
                                       });
-        /*talkButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(doISend) {
-                    doISend=false;
-                    allStart=System.nanoTime();
-                    String onClickMessage = "Communication started... ";
-                    textView.setText(onClickMessage);
 
-                    long start = System.nanoTime();
-                    int[] intRandPoint = randPoint();
-                    randPoint = utils.intArrtoByteArr(intRandPoint);
-                    randPoint = utils.reverseByte(randPoint);
-                    long end = System.nanoTime();
-                    Log.i(TAG, "Communication started...");
-                    Log.i(TAG, "Generating random point on watch in C took " + (end - start)/1000000 + " ms");
-                    Log.i(TAG, "Random point is: "+utils.bytesToHex(eccOperations.getCompPointFromCord(randPoint)));
-                    int[] intRandNUm = randReturn();
-                    byte[] randNum = utils.intArrtoByteArr(intRandNUm);
-                    randNum = utils.reverseByte32(randNum);
-                    eccOperations.setRand(new BigInteger(1, randNum));
-                    byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
-                    //long start= System.nanoTime();
-                    // randPoint= eccOperations.getRandPoint();
-
-                    // long end = System.nanoTime();
-                    // Log.i(TAG,"Generating random point on watch in Java took "+ (end-start)+ " ns");
-                    String datapath = "/path1";
-
-                    new SendMessage(datapath, RandPointResponse).start();
-
-                }
-
-
-            }
-        });*/
 
        //local broadcast receiver
         IntentFilter newFilter = new IntentFilter(Intent.ACTION_SEND);
@@ -184,8 +154,6 @@ public class MainActivity extends WearableActivity {
                 new SendMessage(datapath, RandPointResponse).start();
                 return;*/
             }
-
-
 
         }
     }

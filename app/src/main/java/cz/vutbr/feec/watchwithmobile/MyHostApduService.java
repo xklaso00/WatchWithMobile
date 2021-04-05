@@ -175,6 +175,7 @@ public class MyHostApduService extends HostApduService {
                     }*/
                     //eccOperations.generateProof2();
                 }
+                else return UNKNOWN_CMD_SW;
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (IOException e) {

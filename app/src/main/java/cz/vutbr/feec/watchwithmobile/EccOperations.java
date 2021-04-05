@@ -5,8 +5,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import org.spongycastle.jce.ECNamedCurveTable;
-import org.spongycastle.math.ec.ECCurve;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.io.ByteArrayOutputStream;
@@ -18,7 +16,6 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.interfaces.ECPrivateKey;
@@ -27,7 +24,6 @@ import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Random;
 
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -71,11 +67,11 @@ public class EccOperations {
     private byte[] lastAESIV;
     private byte [] TvPoint;
     CurvesSpecifics cs;
-    public EccOperations() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+    public EccOperations() {
         cs= new CurvesSpecifics();
         SecKey=Options.getPrivateKey();
         pubKey= cs.getG().multiply(SecKey);
-        pubServerBig=Options.getServerPubKey256();
+        pubServerBig=Options.getServerPubKey();
         ServerPubKeyBytes= pubServerBig.toByteArray();
 
     }
@@ -109,28 +105,11 @@ public class EccOperations {
         BigInteger M = null;
         BigInteger hashBig= new BigInteger(1,hash);
         M= rand.add(hashBig.multiply(SecKey)).mod(cs.getN());
-        byte [] M2= bytesFromBigInteger(M);
+        byte [] M2= utils.bytesFromBigInteger(M);
 
         return  M2;
     }
 
-
-    public static byte[] bytesFromBigInteger(BigInteger n) {
-
-        byte[] b = n.toByteArray();
-
-        if(b.length == 32) {
-            return b;
-        }
-        else if(b.length > 32) {
-            return Arrays.copyOfRange(b, b.length - 32, b.length);
-        }
-        else {
-            byte[] buf = new byte[32];
-            System.arraycopy(b, 0, buf, buf.length - b.length, b.length);
-            return buf;
-        }
-    }
 
     public BigInteger getRand() {
         return rand;
@@ -163,7 +142,12 @@ public class EccOperations {
     public byte[] genertateSecKey() throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
         KeyPairGenerator g = KeyPairGenerator.getInstance("EC");
-        g.initialize(new ECGenParameterSpec("secp256k1"), new SecureRandom());
+        String curveName;
+        if(Options.SECURITY_LEVEL==1)
+            curveName="secp224r1";
+        else
+            curveName="secp256k1";
+        g.initialize(new ECGenParameterSpec(curveName), new SecureRandom());
         KeyPair aKeyPair = g.generateKeyPair();
         ECPrivateKey SecKeyA= (ECPrivateKey)aKeyPair.getPrivate();
         BigInteger SKA= SecKeyA.getS();
@@ -177,7 +161,7 @@ public class EccOperations {
         byte [] publicKeyA= PUKA.getEncoded(true);
         Log.i("APDUKEY","public key is "+utils.bytesToHex(publicKeyA));
         Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
-        return bytesFromBigInteger(SKA);
+        return utils.bytesFromBigInteger(SKA);
     }
     byte[] verServerMessage;
     public boolean verifyServer(byte[] sv, byte [] ev,byte[] message) throws NoSuchAlgorithmException, IOException {
@@ -187,12 +171,15 @@ public class EccOperations {
 
         long startTime2=System.nanoTime();
         //start of C implementation its around 10 times faster than the same in java (6ms vs 60ms)
-        if(Options.SECURITY_LEVEL==1)
+        /*if(Options.SECURITY_LEVEL==1)
         {
+            byte[] pubCByte = PubServerEC.getEncoded(false);
+            pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);
+            byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
             return false;
-        }
-        else if(Options.SECURITY_LEVEL==2)
-        {
+
+        }*/
+        //else if(Options.SECURITY_LEVEL==2)
             byte[] pubCByte = PubServerEC.getEncoded(false);
             pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
             /*int[] intCPub = utils.byteArrayToItArray(utils.reverseByte(pubCByte));//reversing the order of bytes to work in C and also making them int arr to work in C
@@ -201,6 +188,11 @@ public class EccOperations {
             int[] intTvC = verSignServer(intSvC, intCPub, intEvC);
             byte[] tvC = utils.intArrtoByteArr(intTvC);
             tvC = utils.reverseByte(tvC);*/
+            Log.i("APDU", "sv is " + utils.bytesToHex(sv));
+            Log.i("APDU", "ev is " + utils.bytesToHex(ev));
+        Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
+        Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
+        Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));
             byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
             if(Options.SECURITY_LEVEL==1)
                 tvC=utils.FixFromC56(tvC);
@@ -220,17 +212,17 @@ public class EccOperations {
                 return true;
             //if(utils.isEqual(hashToVer,ev))
                 //return true;
-        }
+            Log.i("apdu","server not legit");
             return false;
     }
     public boolean compareHashesOfServer(byte [] ev) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = null;
         String hashFunction;
         if(Options.SECURITY_LEVEL==1)
-            hashFunction="SHA-244";
+            hashFunction="SHA-224";
         else
             hashFunction="SHA-256";
-        digest = MessageDigest.getInstance(hashFunction);
+            digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         outputStream.write(ID);
         outputStream.write(utils.bytesFromBigInteger(cs.getN()));
@@ -314,7 +306,13 @@ public class EccOperations {
         Log.i("APDU","Tk is"+utils.bytesToHex(Tk));
         Log.i("APDU","t is "+utils.bytesToHex(t));
         MessageDigest digest = null;
-        digest = MessageDigest.getInstance("SHA-256");
+        String hashFunction;
+        if(Options.SECURITY_LEVEL==1)
+            hashFunction="SHA-224";
+        else
+            hashFunction="SHA-256";
+        digest = MessageDigest.getInstance(hashFunction);
+
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         outputStream.write(MYID);
         outputStream.write(t);
@@ -364,10 +362,14 @@ public class EccOperations {
         byte[] point=utils.reverseByte(utils.intArrtoByteArr(CPoint));
         return getCompPointFromCord(point);
     }
-    public void InicializeAES(byte[] Tk)
-    {
-        byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
+    public void InicializeAES(byte[] Tk) throws NoSuchAlgorithmException {
+        MessageDigest digest = null;
+        digest = MessageDigest.getInstance("SHA-256");
+        byte [] hash = digest.digest(Tk);
+        byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,Tk.length/2);
         AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");
+        /*byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
+        AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");*/
         lastAESIV= new byte[12];
         SecureRandom random = new SecureRandom();
         random.nextBytes(lastAESIV);

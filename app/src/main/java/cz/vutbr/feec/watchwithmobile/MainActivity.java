@@ -81,18 +81,21 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("sap", "starting service?");
         Options op= new Options(this);
+        //op.SaveKey(new BigInteger("07B6272FC66B008BF4F772ACB2FAD14B0E08EC3A6DFD0F38716F47A8",16));
         //op.SaveKey(new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16));
         op.LoadKey();
+        //op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
         //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
         op.LoadServerKey();
-        try {
+        /*try {
             Test t=new Test();
             t.doSth();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (InvalidAlgorithmParameterException e) {
             e.printStackTrace();
-        }
+        }*/
+
     }
 
 
