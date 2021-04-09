@@ -274,4 +274,11 @@ public class utils {
         }
         return newByte;
     }
+    public static byte[] addFirstToByteArr(byte first, byte[] arr2) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        output.write(first);
+        output.write(arr2);
+        byte[] result=output.toByteArray();
+        return result;
+    }
 }

@@ -22,8 +22,8 @@ Java_cz_vutbr_feec_klasovity_microeccimp_MainActivity_stringFromJNI(
 
 
 uECC_Curve curve=uECC_secp256k1();
-const wordcount_t nativeNCount = uECC_curve_num_n_words(uECC_secp256k1());
-jbyte* pointTv=reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+const wordcount_t nativeNCount = uECC_curve_num_n_words(uECC_secp224r1());
+//jbyte* pointTv=reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
 jbyte * rando2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
 
 //function to verify proof of knowledge in C
@@ -187,10 +187,11 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn2(JNIEnv *env, jobjec
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk2(JNIEnv *env, jobject /* this */) { //just a function to return random number to C, only call this after randPoint has been called
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk2(JNIEnv *env, jobject /* this */,jbyteArray JavaPointTv) { //just a function to return random number to C, only call this after randPoint has been called
+    jbyteArray cPointTv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(JavaPointTv, NULL));
     jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1),
-                    reinterpret_cast<const uECC_word_t *>(pointTv),
+                    reinterpret_cast<const uECC_word_t *>(cPointTv),
                     reinterpret_cast<const uECC_word_t *>(rando2), curve);
 
     jbyteArray newArray = env->NewByteArray(64);
@@ -213,12 +214,12 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTWithWatch2(JNIEnv *env
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray tk2) {
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray tk2,jbyteArray JavaPointTv) {
     jbyteArray cTk2= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(tk2, NULL));
-
+    jbyteArray cPointTv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(JavaPointTv, NULL));
     jbyte* TvR= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(TvR),
-                    reinterpret_cast<const uECC_word_t *>(pointTv),
+                    reinterpret_cast<const uECC_word_t *>(cPointTv),
                     reinterpret_cast<const uECC_word_t *>(rando2), curve);
     jbyte* tk= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_add(reinterpret_cast<const uECC_word_t *>(TvR),
@@ -334,38 +335,105 @@ Java_cz_vutbr_feec_watchwithmobile_Test_randPoint(JNIEnv *env, jobject thiz) {
     return newArray;
 
 }
-
+jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+jbyte* point2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
 extern "C"
 JNIEXPORT jbyteArray  JNICALL
 Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer2(JNIEnv *env, jobject thiz,jbyteArray sv, jbyteArray pub, jbyteArray ev,jint SecLevel) {
+    const uECC_word_t* g;
     if(SecLevel==1)
+    {
         curve=uECC_secp224r1();
-    else if(SecLevel==2)
+        g = uECC_curve_G(uECC_secp224r1());
+    }
+
+    else
+    {
         curve=uECC_secp256k1();
+        g = uECC_curve_G(uECC_secp256k1());
+    }
+
     jbyteArray cPub= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(pub, NULL));
     jbyteArray cSv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(sv, NULL));
     jbyteArray cEv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(ev, NULL));
     //jintArray cSv= reinterpret_cast<jintArray>(env->GetIntArrayElements(sv, NULL));
     //jintArray cEv= reinterpret_cast<jintArray>(env->GetIntArrayElements(ev, NULL));
-    const uECC_word_t* g = uECC_curve_G(curve);
-    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+
+    //jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1), g,
                     reinterpret_cast<const uECC_word_t *>(cSv), curve);
+    //jbyte* point2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point2),
+                    reinterpret_cast<const uECC_word_t *>(cPub),
+                    reinterpret_cast<const uECC_word_t *>(cEv), curve);
+    //jbyte* point3= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    /*uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
+                   reinterpret_cast<const uECC_word_t *>(point2),
+                   reinterpret_cast<uECC_word_t *>(tv), curve);*/
+    jbyte* pointTv= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
+                   reinterpret_cast<const uECC_word_t *>(point2),
+                   reinterpret_cast<uECC_word_t *>(pointTv), curve);
+    //pointTv=point3;
+
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,pointTv);
+    //env->SetByteArrayRegion(newArray,64,128,point1);
+    //env->SetByteArrayRegion(newArray,128,192,point2);
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_getPt1(JNIEnv *env, jobject thiz) {
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,point1);
+
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_getPt2(JNIEnv *env, jobject thiz) {
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,point2);
+
+    return newArray;
+}
+
+
+
+
+
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_getsvg(JNIEnv *env, jobject thiz,jbyteArray sv, jint SecLevel) {
+    if (SecLevel == 1)
+        curve = uECC_secp224r1();
+    else if (SecLevel == 2)
+        curve = uECC_secp256k1();
+    jbyteArray cSv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(sv, NULL));
+    jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    const uECC_word_t* g = uECC_curve_G(curve);
+    uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1), g,
+                    reinterpret_cast<const uECC_word_t *>(cSv), curve);
+    jbyteArray newArray=env->NewByteArray(64);
+    env->SetByteArrayRegion(newArray,0,64,point1);
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_getCPUBSV(JNIEnv *env, jobject thiz,jbyteArray pub,jbyteArray ev, jint SecLevel) {
+    if (SecLevel == 1)
+        curve = uECC_secp224r1();
+    else if (SecLevel == 2)
+        curve = uECC_secp256k1();
+
+    jbyteArray cPub= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(pub, NULL));
+    jbyteArray cEv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(ev, NULL));
     jbyte* point2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point2),
                     reinterpret_cast<const uECC_word_t *>(cPub),
                     reinterpret_cast<const uECC_word_t *>(cEv), curve);
-
-    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
-                   reinterpret_cast<const uECC_word_t *>(point2),
-                   reinterpret_cast<uECC_word_t *>(tv), curve);
-    uECC_point_add(reinterpret_cast<const uECC_word_t *>(point1),
-                   reinterpret_cast<const uECC_word_t *>(point2),
-                   reinterpret_cast<uECC_word_t *>(pointTv), curve);
-
-
     jbyteArray newArray=env->NewByteArray(64);
-    env->SetByteArrayRegion(newArray,0,64,pointTv);
+    env->SetByteArrayRegion(newArray,0,64,point2);
     return newArray;
-
 }

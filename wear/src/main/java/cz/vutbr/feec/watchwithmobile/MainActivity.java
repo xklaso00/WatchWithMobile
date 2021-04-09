@@ -63,20 +63,24 @@ public class MainActivity extends WearableActivity {
         eccOperations=new EccOperations();
 //Create an OnClickListener//
         talkButton.setOnClickListener(new View.OnClickListener() {
-                                          @Override
-                                          public void onClick(View v) {
-                                              firstdone=false;
-                                              seconddone=false;
-                                              testDone=false;
-                                              textView.setText("Communication has been reseted!");
-                                          }
-                                      });
+            @Override
+            public void onClick(View v) {
+                ResetComs();
+            }
+        });
 
 
        //local broadcast receiver
         IntentFilter newFilter = new IntentFilter(Intent.ACTION_SEND);
         Receiver messageReceiver = new Receiver();
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, newFilter);
+    }
+    public void ResetComs()
+    {
+        firstdone=false;
+        seconddone=false;
+        testDone=false;
+        textView.setText("Communication has been reseted!");
     }
 
     boolean firstdone=false;
@@ -96,6 +100,8 @@ public class MainActivity extends WearableActivity {
                 allStart=System.nanoTime();
                 Log.i(TAG,"I got path 1 in LBM");
                 byte [] Tv= intent.getByteArrayExtra("data");
+                byte SecurityByte=intent.getByteExtra("Security", (byte) 0x02);
+                Options.setByteSecLevel(SecurityByte);
                 byte[] T1=eccOperations.createT1();
                 byte [] Tk2= eccOperations.createTK2(Tv);
                 Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
@@ -141,18 +147,12 @@ public class MainActivity extends WearableActivity {
                 testDone=true;
                 new SendMessage("/path3", A_OKAY).start();
                 return;
-                /*int[] intRandPoint = randPoint();
-                randPoint = utils.intArrtoByteArr(intRandPoint);
-                randPoint = utils.reverseByte(randPoint);
 
-                int[] intRandNUm = randReturn();
-                byte[] randNum = utils.intArrtoByteArr(intRandNUm);
-                randNum = utils.reverseByte32(randNum);
-                eccOperations.setRand(new BigInteger(1, randNum));
-                byte[] RandPointResponse = eccOperations.getCompPointFromCord(randPoint);
-                String datapath = "/path3";
-                new SendMessage(datapath, RandPointResponse).start();
-                return;*/
+            }
+            else if(intent.getStringExtra("path").equals("pathReset"))
+            {
+                ResetComs();
+                return;
             }
 
         }

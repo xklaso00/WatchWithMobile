@@ -53,7 +53,7 @@ public class MyHostApduService extends HostApduService {
         //this.registerReceiver(messageReceiver, messageFilter,null,handler);
         //we are using modified LBM that should run on second thread, with classic LBM program gets stuck
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
-        new SendMessage("/path3",A_OKAY).start();
+        new SendMessageTEST("/path3",A_OKAY).start();
 
         return START_NOT_STICKY;
     }
@@ -109,7 +109,7 @@ public class MyHostApduService extends HostApduService {
         if (utils.isEqual(APDU_SELECT, commandApdu)) {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             Log.i(TAG, "APDU_SELECT triggered. Response: " + utils.bytesToHex(A_OKAY));
-
+            Example.end=true;
             return A_OKAY;
 
         }
@@ -146,7 +146,8 @@ public class MyHostApduService extends HostApduService {
         else if (utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(!m1sent))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-
+            byte secLevel=commandApdu[2];
+            Options.setByteSecLevel(secLevel);
             byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
             byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
             try {
@@ -156,9 +157,10 @@ public class MyHostApduService extends HostApduService {
                     Log.i(TAG,"It is super legit");
                     serverLegit=true;
                     byte[]Tv=eccOperations.getTvPoint();
+                    byte[] TvWithSec=utils.addFirstToByteArr(secLevel,Tv);
                     if(m1sent==false) {
                         m1sent=true;
-                        new SendMessage("/path1", Tv).start();
+                        new SendMessage("/path1", TvWithSec).start();
                     }
                     m1sent=true;
                     if(Example.GotIt==false)
@@ -219,7 +221,6 @@ public class MyHostApduService extends HostApduService {
         Example.gotFirstLBM=false;
     }
 
-
     class SendMessage extends Thread {
         String path;
         byte[] message;
@@ -237,29 +238,58 @@ public class MyHostApduService extends HostApduService {
                 List<Node> nodes = Tasks.await(wearableList);
                 for (Node node : nodes) {
                     Task<Integer> sendMessageTask = Wearable.getMessageClient(MyHostApduService.this).sendMessage(node.getId(), path, message);
-                Log.i("APDU","Mess sent");
+                Log.i("WatchComs","Mess sent");
                 }
+                if(nodes.isEmpty())
+                    Log.i("WatchComs","Couldn't connect to the watch");
 
             } catch (ExecutionException exception) {
             }
             catch (InterruptedException exception) {
             }
-           /*IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
-            MyHostApduService.SendMessage.Receiver messageReceiver = new MyHostApduService.SendMessage.Receiver();
-            LocalBroadcastManager.getInstance(getApplicationContext()).registerReceiver(messageReceiver, messageFilter);*/
-
             return;
-
         }
+    }
 
+    class SendMessageTEST extends Thread {
+        String path;
+        byte[] message;
 
+        SendMessageTEST(String p, byte[] m) {
+            path = p;
+            message = m;
+        }
+        boolean exit = false;
+        public void run() {
+
+            Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
+            Log.i("WatchComms", "Starting connection to watch");
+            while(Example.end==false) {
+
+                try {
+
+                    List<Node> nodes = Tasks.await(wearableList);
+                    for (Node node : nodes) {
+                        Task<Integer> sendMessageTask = Wearable.getMessageClient(MyHostApduService.this).sendMessage(node.getId(), path, message);
+                    }
+                    if(nodes.isEmpty())
+                        Log.i("WatchComs","Couldn't connect to the watch");
+                    sleep(1000);
+
+                } catch (ExecutionException exception) {
+                } catch (InterruptedException exception) {
+                }
+            }
+            Log.i("WatchComms", "Ending connection to watch");
+            return;
+        }
     }
     public class Receiver extends BroadcastReceiver {
         @RequiresApi(api = Build.VERSION_CODES.KITKAT)
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getStringExtra("path").equals("2")){
-                Log.i(TAG,"I got it from the watch");
+                Log.i(TAG,"Received proof from watch");
                 if(Example.gotSecondLBM==true)
                     return;
                 Example.gotSecondLBM=true;
@@ -278,7 +308,6 @@ public class MyHostApduService extends HostApduService {
                 if(Example.gotFirstLBM==true)
                     return;
                 Example.gotFirstLBM=true;
-                Log.i(TAG,"got path1 in LBM");
                 byte[] Tk2T1=intent.getByteArrayExtra("data");
                 byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,Options.BYTELENGHT+1);
                 Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
@@ -298,7 +327,10 @@ public class MyHostApduService extends HostApduService {
                 Log.i(TAG,"I got RandFromWatch");
                 Example.GotRandWatch= true;
             }
-
+            else if(intent.getStringExtra("path").equals("4")) {
+                startTestMsg();
+                new SendMessage("/pathReset",A_OKAY).start();
+            }
         }
     }
     //just some thread test that dowsnt work, but mby it will be usefull in the future, or get deleted lol
@@ -334,7 +366,10 @@ public class MyHostApduService extends HostApduService {
         //InstrumentationRegistry.getTargetContext().unregisterReceiver(br);
         //assertThat("broadcast's not broadcasted!", gate.getCount(), is(0L));
     }*/
-
+    public void startTestMsg()
+    {
+        new SendMessageTEST("/path3",A_OKAY).start();
+    }
     public native int[] randPoint();
     public native int [] randReturn();
 }

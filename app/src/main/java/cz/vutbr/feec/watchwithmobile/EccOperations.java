@@ -167,7 +167,7 @@ public class EccOperations {
     public boolean verifyServer(byte[] sv, byte [] ev,byte[] message) throws NoSuchAlgorithmException, IOException {
         long startTime = System.nanoTime();
         verServerMessage=message;
-        ECPoint PubServerEC= cs.getCurve().decodePoint(ServerPubKeyBytes);
+        ECPoint PubServerEC= cs.getCurve().decodePoint(utils.bytesFromBigInteger(Options.getServerPubKey()));
 
         long startTime2=System.nanoTime();
         //start of C implementation its around 10 times faster than the same in java (6ms vs 60ms)
@@ -193,13 +193,25 @@ public class EccOperations {
         Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
         Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
         Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));
+            //byte[] svg=getsvg(utils.FixForC32(sv),Options.SECURITY_LEVEL);
+           // Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svg)));
+           // byte[] pubev=getCPUBSV(utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+        //Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(pubev)));
             byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+
+
+            byte[] svgC=getPt1();
+           byte[] PubEv=getPt2();
+            //tvC=Arrays.copyOfRange(tvC,0,64);
+        Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svgC)));
+        Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(PubEv)));
             if(Options.SECURITY_LEVEL==1)
                 tvC=utils.FixFromC56(tvC);
             else
                 tvC=utils.FixForC64(tvC);
             byte[] compTvC = getCompPointFromCord(tvC);
             TvPoint = compTvC;
+
             Log.i("APDU", "from C tv is " + utils.bytesToHex(compTvC));
             long duration2 = System.nanoTime() - startTime2;
             Log.i("APDU", "Ver in C took " + duration2 / 1000000 + " ms");
@@ -210,10 +222,29 @@ public class EccOperations {
             Log.i("APDU", "All and all verify took  " + duration / 1000000 + " ms");
             if(isItLegit)
                 return true;
+            computeVerInJava(sv,ev);
+            isItLegit=compareHashesOfServer(ev);
+            if(isItLegit)
+                return true;
             //if(utils.isEqual(hashToVer,ev))
                 //return true;
             Log.i("apdu","server not legit");
             return false;
+    }
+    public byte[] computeVerInJava(byte[] sv, byte[] ev)
+    {
+        BigInteger svBig= new BigInteger(1,sv);
+        BigInteger evBig=new BigInteger(1,ev);
+        ECPoint gSv= cs.getG().multiply(svBig);
+        Log.i("APDU","Svg in java is "+utils.bytesToHex(gSv.getEncoded(false)));
+        ECPoint PubServerEC= cs.getCurve().decodePoint(utils.bytesFromBigInteger(Options.getServerPubKey()));
+        ECPoint pkEv=PubServerEC.multiply(evBig);
+        Log.i("APDU","PUBEV in java is "+utils.bytesToHex(pkEv.getEncoded(false)));
+        ECPoint res=gSv.add(pkEv);
+        byte[] tv=res.getEncoded(true);
+        Log.i("APDU","tv in java is "+utils.bytesToHex(tv));
+        TvPoint=res.getEncoded(true);
+        return tv;
     }
     public boolean compareHashesOfServer(byte [] ev) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = null;
@@ -248,7 +279,7 @@ public class EccOperations {
         t=getCompPointFromCord(t);
         byte[] randNumber=utils.FixForC32(randReturn2(Options.SECURITY_LEVEL));
 
-        byte [] Tk=generateTk2();
+        byte [] Tk=generateTk2(getCBytePointFromCompressedByte(TvPoint));
         if(Options.SECURITY_LEVEL==1)
             Tk=utils.FixFromC56(Tk);
         else
@@ -268,7 +299,7 @@ public class EccOperations {
         outputStream.reset();
 
 
-        BigInteger mid= ((new BigInteger(1,hash)).multiply(SecKey)).mod(cs.getN());
+        BigInteger mid= ((new BigInteger(1,hash)).multiply(Options.getPrivateKey())).mod(cs.getN());
         BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
         byte [] signature= utils.bytesFromBigInteger(sv);
         outputStream.write(MYID);
@@ -297,7 +328,7 @@ public class EccOperations {
             t=utils.FixForC64(t);
         t=getCompPointFromCord(t);
 
-        byte[] Tk=generateTkWithWatch2(getCBytePointFromCompressedByte(Tk2));
+        byte[] Tk=generateTkWithWatch2(getCBytePointFromCompressedByte(Tk2),getCBytePointFromCompressedByte(TvPoint));
         if(Options.SECURITY_LEVEL==1)
             Tk=utils.FixFromC56(Tk);
         else
@@ -322,7 +353,7 @@ public class EccOperations {
         hashForBoth = digest.digest(connectedBytes);
         Log.i("APDU","Hash for both is "+utils.bytesToHex(hashForBoth));
         outputStream.reset();
-        BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(SecKey)).mod(cs.getN());
+        BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(Options.getPrivateKey())).mod(cs.getN());
         BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
         byte [] signature= utils.bytesFromBigInteger(sv);
         Log.i("APDU","sig from phone is "+utils.bytesToHex(signature));
@@ -366,7 +397,7 @@ public class EccOperations {
         MessageDigest digest = null;
         digest = MessageDigest.getInstance("SHA-256");
         byte [] hash = digest.digest(Tk);
-        byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,Tk.length/2);
+        byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,hash.length/2);
         AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");
         /*byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
         AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");*/
@@ -397,11 +428,11 @@ public class EccOperations {
     
     public native byte[] randPoint2();
     public native byte[] randReturn2(int SevLevel);
-    public native byte[] generateTk2();
+    public native byte[] generateTk2(byte[] tv);
     public native byte[] generateTWithWatch2(byte[] t1);
-    public native byte[] generateTkWithWatch2(byte[] tk2);
-
-
+    public native byte[] generateTkWithWatch2(byte[] tk2,byte[] tv);
+    public native byte[] getPt1();
+    public native byte[] getPt2();
     public byte[] getTvPoint() {
         return TvPoint;
     }

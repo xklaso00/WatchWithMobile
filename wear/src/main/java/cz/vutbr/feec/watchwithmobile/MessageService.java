@@ -9,6 +9,8 @@ import com.google.android.gms.wearable.MessageEvent;
 //import android.support.v4.content.LocalBroadcastManager;
 import com.google.android.gms.wearable.WearableListenerService;
 
+import java.util.Arrays;
+
 public class MessageService extends WearableListenerService {
 utils utils= new utils();
 
@@ -16,21 +18,16 @@ utils utils= new utils();
     public void onMessageReceived(MessageEvent messageEvent) {
             //we can pretty much just get one message now with path 1
         if (messageEvent.getPath().equals("/path1")) {
-           /* final String message = new String(messageEvent.getData());
-            byte [] RandNumber= messageEvent.getData();
-           // byte[] hashToSign=messageEvent.getData();
-            //Log.i("WatchApp","hash to sign is "+utils.bytesToHex(hashToSign));
-            Intent messageIntent = new Intent();
-            messageIntent.setAction(Intent.ACTION_SEND);
-            messageIntent.putExtra("message", RandNumber);
-            messageIntent.putExtra("path","path1");  //pass the received data and path to mainacc with localBroadcast
-            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);*/
+
             Intent messageIntent = new Intent();
             messageIntent.setAction(Intent.ACTION_SEND);
             Log.i("WatchApp","I got Tv from phone ");
-            byte [] Tv=messageEvent.getData();
+            byte [] TvWithSec=messageEvent.getData();
             messageIntent.putExtra("path","path1");
+            byte[] Tv= Arrays.copyOfRange(TvWithSec,1,TvWithSec.length);
+            byte Security=TvWithSec[0];
             messageIntent.putExtra("data",Tv);
+            messageIntent.putExtra("Security",Security);
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
 
         }
@@ -49,6 +46,14 @@ utils utils= new utils();
             messageIntent.setAction(Intent.ACTION_SEND);
             Log.i("WatchApp","I got testing msg ");
             messageIntent.putExtra("path","path3");
+            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
+        }
+        else if(messageEvent.getPath().equals("/pathReset"))
+        {
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            Log.i("WatchApp","I got RESET msg ");
+            messageIntent.putExtra("path","pathReset");
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
         }
         else {

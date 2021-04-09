@@ -3,6 +3,7 @@ package cz.vutbr.feec.watchwithmobile;
 
 
 //import android.support.v7.app.AppCompatActivity;
+import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.os.Build;
 import android.util.Log;
@@ -11,12 +12,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 //import android.support.v4.content.LocalBroadcastManager;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.tasks.Task;
@@ -51,26 +54,15 @@ public class MainActivity extends AppCompatActivity {
     boolean recive1=true;
     long allTimeStart;
     long allTimeEnd;
-
+    Button resetBttn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textview = findViewById(R.id.textView);
-        /*try {
-            EccOperations ec=new EccOperations();
-            ec.genertateSecKey();
-        } catch (NoSuchAlgorithmException e) {
-            Log.i("apdu", "mis1");
-            e.printStackTrace();
-        } catch (InvalidAlgorithmParameterException e) {
-            Log.i("apdu", "mis2");
-            e.printStackTrace();
-        } catch (NoSuchProviderException e) {
-            Log.i("apdu", "mis3");
-            e.printStackTrace();
-        }*/
+        resetBttn=findViewById(R.id.ResetButton);
+
 
         // IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
        // Receiver messageReceiver = new Receiver();
@@ -87,17 +79,26 @@ public class MainActivity extends AppCompatActivity {
         //op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
         //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
         op.LoadServerKey();
-        /*try {
-            Test t=new Test();
-            t.doSth();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (InvalidAlgorithmParameterException e) {
-            e.printStackTrace();
-        }*/
+        resetBttn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(Example.end==true)
+                {
+                    reWatchConnection();
+                }
+                Example.Reset();
+                Toast.makeText(getApplicationContext(),"Communication has been restarted",Toast.LENGTH_LONG).show();
+            }
+        });
 
     }
-
+    public void reWatchConnection()
+    {
+        Intent messageIntent = new Intent(); //we have to broadcast intent so create one
+        messageIntent.setAction(Intent.ACTION_SEND);
+        messageIntent.putExtra("path", "4");
+        LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
+    }
 
     public class Receiver extends BroadcastReceiver {
         @RequiresApi(api = Build.VERSION_CODES.KITKAT)

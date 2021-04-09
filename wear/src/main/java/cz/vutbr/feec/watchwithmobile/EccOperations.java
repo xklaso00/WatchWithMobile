@@ -63,7 +63,7 @@ public class EccOperations {
     {
         BigInteger M = null;
         BigInteger hashBig= new BigInteger(1,hash);
-        M= (hashBig.multiply(SecKey)).mod(cs.getN());
+        M= (hashBig.multiply(Options.getPrivateKey())).mod(cs.getN());
         M=(rand.subtract(M)).mod(cs.getN());
         byte [] M2= utils.bytesFromBigInteger(M);
         //Log.i("neco", "M is " +ByteArrayToHexString(M2));
