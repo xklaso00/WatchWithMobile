@@ -29,17 +29,20 @@ import javax.crypto.spec.SecretKeySpec;
 
 //class that holds info about curve, secret key for now and functions with EC
 public class EccOperations {
+    static {
+        System.loadLibrary("native-lib");
+    }
     byte [] ID= new byte[]{(byte)0x10,
             (byte)0x20,
             (byte)0x30,
             (byte)0x40,
             (byte)0x50,
     };
-    byte [] MYID= new byte[]{(byte)0x11,
-            (byte)0x22,
-            (byte)0x33,
-            (byte)0x44,
-            (byte)0x55,
+    byte [] MYID= new byte[]{(byte)0x10,
+            (byte)0x20,
+            (byte)0x30,
+            (byte)0x40,
+            (byte)0x50,
     };
     //BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
     //final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
@@ -121,6 +124,7 @@ public class EccOperations {
     //from C we have bytearray of X and Y cord, but spongy/bouncy only accepts bigint as x and y cords
     public byte [] getCompPointFromCord(byte[] cords)
     {
+        long time=System.nanoTime();
         BigInteger Px= utils.getXCord(cords);
         BigInteger Py= utils.getYCord(cords);
         ECPoint ecPoint=cs.getCurve().createPoint(Px,Py); //create ecpoint so we can compress it
@@ -132,6 +136,7 @@ public class EccOperations {
             Log.i("APDU","EROOR point "+utils.bytesToHex(cords));
         }
         byte [] comPoint = ecPoint.getEncoded(true); //compressed point, we need that first byte before x cord to identify where the poitn is, this method does that
+       // Log.i("CompTimer","Comp took "+(System.nanoTime()-time)+"ns");
         return comPoint;
     }
 
@@ -182,23 +187,14 @@ public class EccOperations {
         //else if(Options.SECURITY_LEVEL==2)
             byte[] pubCByte = PubServerEC.getEncoded(false);
             pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
-            /*int[] intCPub = utils.byteArrayToItArray(utils.reverseByte(pubCByte));//reversing the order of bytes to work in C and also making them int arr to work in C
-            int[] intSvC = utils.byteArrayToItArray(utils.reverseByte32(sv));
-            int[] intEvC = utils.byteArrayToItArray(utils.reverseByte32(ev));
-            int[] intTvC = verSignServer(intSvC, intCPub, intEvC);
-            byte[] tvC = utils.intArrtoByteArr(intTvC);
-            tvC = utils.reverseByte(tvC);*/
+
             Log.i("APDU", "sv is " + utils.bytesToHex(sv));
             Log.i("APDU", "ev is " + utils.bytesToHex(ev));
         Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
         Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
         Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));
-            //byte[] svg=getsvg(utils.FixForC32(sv),Options.SECURITY_LEVEL);
-           // Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svg)));
-           // byte[] pubev=getCPUBSV(utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
-        //Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(pubev)));
-            byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
 
+            byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
 
             byte[] svgC=getPt1();
            byte[] PubEv=getPt2();
@@ -213,17 +209,18 @@ public class EccOperations {
             TvPoint = compTvC;
 
             Log.i("APDU", "from C tv is " + utils.bytesToHex(compTvC));
-            long duration2 = System.nanoTime() - startTime2;
-            Log.i("APDU", "Ver in C took " + duration2 / 1000000 + " ms");
+
             //end of C implementation
 
             boolean isItLegit=compareHashesOfServer(ev);
-            long duration = System.nanoTime() - startTime;
-            Log.i("APDU", "All and all verify took  " + duration / 1000000 + " ms");
+        long duration2 = System.nanoTime() - startTime2;
+        Log.i("Timer", "Ver in C took " + duration2 / 1000000 + " ms");
             if(isItLegit)
                 return true;
             computeVerInJava(sv,ev);
             isItLegit=compareHashesOfServer(ev);
+        long duration = System.nanoTime() - startTime;
+        Log.i("Timer", "All and all verify took  " + duration / 1000000 + " ms");
             if(isItLegit)
                 return true;
             //if(utils.isEqual(hashToVer,ev))
@@ -353,8 +350,10 @@ public class EccOperations {
         hashForBoth = digest.digest(connectedBytes);
         Log.i("APDU","Hash for both is "+utils.bytesToHex(hashForBoth));
         outputStream.reset();
+        long SignStart=System.nanoTime();
         BigInteger mid= ((new BigInteger(1,hashForBoth)).multiply(Options.getPrivateKey())).mod(cs.getN());
         BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
+        Log.i("Timer","Sign in phone took "+ (System.nanoTime()-SignStart)+" ns");
         byte [] signature= utils.bytesFromBigInteger(sv);
         Log.i("APDU","sig from phone is "+utils.bytesToHex(signature));
         outputStream.write(MYID);

@@ -19,6 +19,12 @@ public class Options {
     private static BigInteger ServerPubKey256;
     private static BigInteger SecKey224;
     private static BigInteger ServerPubKey224;
+    public static byte [] MYID= new byte[]{(byte)0x10,
+            (byte)0x20,
+            (byte)0x30,
+            (byte)0x40,
+            (byte)0x50,
+    };
     private Context context;
     public Options(Context context)
     {

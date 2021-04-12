@@ -59,7 +59,9 @@ public class MyHostApduService extends HostApduService {
     }
 
 
-    long Start;
+    long Start1;
+    long StartBlockWithWatch;
+    long startApdu;
     private static final String TAG= "APDUSERVICE";
     private static final byte[] UNKNOWN_CMD_SW = { (byte)0x00,
             (byte)0x00};
@@ -110,13 +112,21 @@ public class MyHostApduService extends HostApduService {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             Log.i(TAG, "APDU_SELECT triggered. Response: " + utils.bytesToHex(A_OKAY));
             Example.end=true;
-            return A_OKAY;
+            startApdu=System.nanoTime();
+            byte[] toGive=A_OKAY;
+            try {
+                toGive=utils.appendByteArray(Options.MYID,A_OKAY);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return toGive;
 
         }
 
         else if (utils.isCommand(SERVERSIGCOM,commandApdu))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
+
             byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
             byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
             try {
@@ -136,7 +146,10 @@ public class MyHostApduService extends HostApduService {
         else if (utils.isCommand(AESTESTCOM,commandApdu))
         {
             try {
+                Log.i(TAG,"Aes apdu "+utils.bytesToHex(commandApdu));
+                long startAes=System.nanoTime();
                 byte[] decrypted=eccOperations.decodeAESCommand(commandApdu);
+                Log.i("Timer","Aes decrypt took "+(System.nanoTime()-startAes)/1000000+" ms");
                 Log.i(TAG,"Decrypeted part is "+utils.bytesToHex(decrypted));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -146,6 +159,8 @@ public class MyHostApduService extends HostApduService {
         else if (utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(!m1sent))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
+            Log.i("Timer","To get second apdu it took "+(System.nanoTime()-startApdu)/1000000+" ms");
+            StartBlockWithWatch=System.nanoTime();
             byte secLevel=commandApdu[2];
             Options.setByteSecLevel(secLevel);
             byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
@@ -160,22 +175,15 @@ public class MyHostApduService extends HostApduService {
                     byte[] TvWithSec=utils.addFirstToByteArr(secLevel,Tv);
                     if(m1sent==false) {
                         m1sent=true;
+                        Start1=System.nanoTime();
                         new SendMessage("/path1", TvWithSec).start();
                     }
                     m1sent=true;
-                    if(Example.GotIt==false)
+                    if(Example.GotIt==false) {
+                        Log.i("APDU","Sending notYet");
                         return NOTYET;
-                   /* else
-                    {
-                        ByteArrayOutputStream outputStream= new ByteArrayOutputStream();
-                        outputStream.write(halfMsg);
-                        outputStream.write(signedFromWatch);
-                        byte[] FullMsg=outputStream.toByteArray();
-                        outputStream.close();
-                        Log.i(TAG,"FullMSG is "+utils.bytesToHex(FullMsg));
-                        return FullMsg;
-                    }*/
-                    //eccOperations.generateProof2();
+                    }
+
                 }
                 else return UNKNOWN_CMD_SW;
             } catch (NoSuchAlgorithmException e) {
@@ -187,6 +195,7 @@ public class MyHostApduService extends HostApduService {
         }
         else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(m1sent)&&(!Example.GotIt))
         {
+            Log.i(TAG,"NOTYET");
             return NOTYET;
         }
         else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(Example.GotIt))
@@ -197,6 +206,7 @@ public class MyHostApduService extends HostApduService {
                 outputStream.write(signedFromWatch);
                 byte[] FullMsg=outputStream.toByteArray();
                 outputStream.close();
+                Log.i("Timer","To sending last response it took "+(System.nanoTime()-StartBlockWithWatch)/1000000+" ms");
                 Log.i(TAG,"FullMSG is "+utils.bytesToHex(FullMsg));
                 return FullMsg;
             }
@@ -294,7 +304,7 @@ public class MyHostApduService extends HostApduService {
                     return;
                 Example.gotSecondLBM=true;
                 signedFromWatch = intent.getByteArrayExtra("data");
-
+                Log.i("Timer","To second watch response it took "+(System.nanoTime()-StartBlockWithWatch)/1000000+" ms");
                 Log.i(TAG,"Signed from watch is : "+utils.bytesToHex(signedFromWatch)) ;
                // long End= System.nanoTime();
                // long Duration= End-Start;
@@ -305,8 +315,11 @@ public class MyHostApduService extends HostApduService {
             else if(intent.getStringExtra("path").equals("1"))
             {
                 Log.i(TAG,"got path1 in LBM");
+
                 if(Example.gotFirstLBM==true)
                     return;
+                long duration1=System.nanoTime()-Start1;
+                Log.i("Timer","fist communication took "+duration1/1000000+" ms");
                 Example.gotFirstLBM=true;
                 byte[] Tk2T1=intent.getByteArrayExtra("data");
                 byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,Options.BYTELENGHT+1);
@@ -314,7 +327,10 @@ public class MyHostApduService extends HostApduService {
                 byte[] T1= Arrays.copyOfRange(Tk2T1,Options.BYTELENGHT+1,Tk2T1.length);
                 Log.i(TAG,"T1 is "+utils.bytesToHex(T1));
                 try {
+                    Start1=System.nanoTime();
                     halfMsg=eccOperations.GenerateProofWithWatch(Tk2,T1);
+                    duration1=System.nanoTime();
+                    Log.i("Timer","Computing of e took "+(duration1-Start1)/1000000+" ms");
                     new SendMessage("/path2",eccOperations.getHashForBoth()).start();
                 } catch (NoSuchAlgorithmException e) {
                     e.printStackTrace();

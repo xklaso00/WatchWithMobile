@@ -102,12 +102,15 @@ public class utils {
         }
         else
         {
-            if (b[0] == 0)
-            {
-                byte[] tmp = new byte[b.length - 1];
-                System.arraycopy(b, 1, tmp, 0, tmp.length);
-                b = tmp;
+            if (b.length > 28) {
+                if (b[0] == 0)
+                {
+                    byte[] tmp = new byte[b.length - 1];
+                    System.arraycopy(b, 1, tmp, 0, tmp.length);
+                    b = tmp;
+                }
             }
+
             return b;
         }
     }

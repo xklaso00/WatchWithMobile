@@ -84,7 +84,7 @@ public class Options {
             setSecurityLevel(1);
             Log.i(TAG,"secutity has been set to 1");
         }
-        else if(Byte.compare(secByte,(byte)0x02)==0)
+        else if(secByte == (byte) 0x02)
         {
             setSecurityLevel(2);
             Log.i(TAG,"security has been set to 2");

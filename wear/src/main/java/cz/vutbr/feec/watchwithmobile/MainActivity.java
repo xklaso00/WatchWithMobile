@@ -106,6 +106,7 @@ public class MainActivity extends WearableActivity {
                 byte [] Tk2= eccOperations.createTK2(Tv);
                 Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
                 Log.i(TAG,"T1 is "+utils.bytesToHex(T1));
+                Log.i("Timer","To create t1 tk2 it took  "+(System.nanoTime()-allStart)/1000000+" ms");
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 try {
                     outputStream.write(Tk2);
