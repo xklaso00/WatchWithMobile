@@ -32,7 +32,7 @@ public class EccOperations {
     static {
         System.loadLibrary("native-lib");
     }
-    byte [] ID= new byte[]{(byte)0x10,
+    /*byte [] ID= new byte[]{(byte)0x10,
             (byte)0x20,
             (byte)0x30,
             (byte)0x40,
@@ -43,39 +43,32 @@ public class EccOperations {
             (byte)0x30,
             (byte)0x40,
             (byte)0x50,
-    };
-    //BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
-    //final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
-    //BigInteger A = new BigInteger("0");
-    //BigInteger B= new BigInteger("7");
-    //ECCurve curve = new ECCurve.Fp(prime,A,B);
-   // BigInteger Gx= new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
-    //BigInteger Gy= new BigInteger("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16);
-    //ECPoint G = curve.createPoint(Gx,Gy);
-    //BigInteger G2 = new BigInteger("0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",16);
+    };*/
+    private byte[] privateKey256;
+    private byte[] privateKey224;
     BigInteger rand=null;
     byte[] Send=null;
     //ECCurve ellipticCurve= new ECCurve.Fp(prime,A,B);
 
     //ECCurve ec2=
     BigInteger SecKey;
-    //BigInteger SecKey= new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16); //generating keys is going to be implemented, not needed now for what we do
-    //BigInteger PubKey= new BigInteger("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",16);
     ECPoint pubKey=null;
     //BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
     BigInteger pubServerBig;
    // byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
-   byte [] ServerPubKeyBytes;
+   //byte [] ServerPubKeyBytes;
     private SecretKey AESKey;
     private byte[] lastAESIV;
     private byte [] TvPoint;
+    private byte[] PubKey256;
+    private byte[] PubKey224;
     CurvesSpecifics cs;
     public EccOperations() {
         cs= new CurvesSpecifics();
         SecKey=Options.getPrivateKey();
-        pubKey= cs.getG().multiply(SecKey);
+        //pubKey= cs.getG().multiply(SecKey);
         pubServerBig=Options.getServerPubKey();
-        ServerPubKeyBytes= pubServerBig.toByteArray();
+        //ServerPubKeyBytes= pubServerBig.toByteArray();
 
     }
     //returns public key
@@ -166,6 +159,10 @@ public class EccOperations {
         byte [] publicKeyA= PUKA.getEncoded(true);
         Log.i("APDUKEY","public key is "+utils.bytesToHex(publicKeyA));
         Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
+        if(Options.SECURITY_LEVEL==1)
+            PubKey224=publicKeyA;
+        else
+            PubKey256=publicKeyA;
         return utils.bytesFromBigInteger(SKA);
     }
     byte[] verServerMessage;
@@ -252,7 +249,7 @@ public class EccOperations {
             hashFunction="SHA-256";
             digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        outputStream.write(ID);
+        outputStream.write(Options.MYID);
         outputStream.write(utils.bytesFromBigInteger(cs.getN()));
         outputStream.write(TvPoint);
         byte connectedBytes[] = outputStream.toByteArray();
@@ -283,10 +280,15 @@ public class EccOperations {
             Tk=utils.FixForC64(Tk);
         Tk=getCompPointFromCord(Tk);
 
+        String hashFunction;
+        if(Options.SECURITY_LEVEL==1)
+            hashFunction="SHA-224";
+        else
+            hashFunction="SHA-256";
         MessageDigest digest = null;
-        digest = MessageDigest.getInstance("SHA-256");
+        digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-        outputStream.write(MYID);
+        outputStream.write(Options.MYID);
         outputStream.write(t);
         outputStream.write(Tk);
         outputStream.write(verServerMessage);
@@ -299,7 +301,7 @@ public class EccOperations {
         BigInteger mid= ((new BigInteger(1,hash)).multiply(Options.getPrivateKey())).mod(cs.getN());
         BigInteger sv = ((new BigInteger(1,randNumber)).subtract(mid)).mod(cs.getN());
         byte [] signature= utils.bytesFromBigInteger(sv);
-        outputStream.write(MYID);
+        outputStream.write(Options.MYID);
         outputStream.write(hash);
         outputStream.write(signature);
         byte[] finalMSG=outputStream.toByteArray();
@@ -342,7 +344,7 @@ public class EccOperations {
         digest = MessageDigest.getInstance(hashFunction);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-        outputStream.write(MYID);
+        outputStream.write(Options.MYID);
         outputStream.write(t);
         outputStream.write(Tk);
         outputStream.write(verServerMessage);
@@ -356,7 +358,7 @@ public class EccOperations {
         Log.i("Timer","Sign in phone took "+ (System.nanoTime()-SignStart)+" ns");
         byte [] signature= utils.bytesFromBigInteger(sv);
         Log.i("APDU","sig from phone is "+utils.bytesToHex(signature));
-        outputStream.write(MYID);
+        outputStream.write(Options.MYID);
         outputStream.write(hashForBoth);
         outputStream.write(signature);
         byte[] finalMSG=outputStream.toByteArray();
@@ -422,6 +424,23 @@ public class EccOperations {
         byte[] decrypted= AESGCMClass.decrypt(AESed,AESKey,IV);
         return decrypted;
     }
+    public byte[] registerDev(byte []ID) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException {
+        Options.setSecurityLevel(2);
+        privateKey256=genertateSecKey();
+        Options.setSecurityLevel(1);
+        privateKey224=genertateSecKey();
+        byte[] bothKeys=utils.appendByteArray(PubKey256,PubKey224);
+        return bothKeys;
+    }
+    public byte[] getPrivateKey256()
+    {
+        return privateKey256;
+    }
+    public byte[] getPrivateKey224()
+    {
+        return privateKey224;
+    }
+
 
     public native byte[] verSignServer2(byte[] sv, byte [] pub, byte [] ev, int SecLevel);
     

@@ -54,10 +54,22 @@ public class MyHostApduService extends HostApduService {
         //we are using modified LBM that should run on second thread, with classic LBM program gets stuck
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
         new SendMessageTEST("/path3",A_OKAY).start();
-
+        //op.RegisterID(MYID);
+        //byte[] loadedID=op.LoadID();
+       // Log.i(TAG,"id is "+utils.bytesToHex(loadedID));
+       // op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
+        //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
+        op.LoadServerKey();
+        op.LoadKey();
+        op.LoadID();
         return START_NOT_STICKY;
     }
-
+    byte [] MYID= new byte[]{(byte)0x10,
+            (byte)0x20,
+            (byte)0x30,
+            (byte)0x40,
+            (byte)0x50,
+    };
 
     long Start1;
     long StartBlockWithWatch;
@@ -92,6 +104,8 @@ public class MyHostApduService extends HostApduService {
             (byte)0x06};
     private static final byte[] NOTYET ={(byte)0x88, //start of command signthis
             (byte)0x88};
+    private static final byte[] REGISTER={(byte)0x80,
+            (byte)0x09};
     EccOperations eccOperations = new EccOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
@@ -99,7 +113,10 @@ public class MyHostApduService extends HostApduService {
     byte[] halfMsg;
     boolean m1sent=false;
     boolean m2sent=false;
+    Options op= new Options(this);
+
     public MyHostApduService() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+        //op.LoadKey();
     }
     Bundle extras=null;
 
@@ -110,25 +127,54 @@ public class MyHostApduService extends HostApduService {
         // First command: select AID
         if (utils.isEqual(APDU_SELECT, commandApdu)) {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-            Log.i(TAG, "APDU_SELECT triggered. Response: " + utils.bytesToHex(A_OKAY));
+
             Example.end=true;
             startApdu=System.nanoTime();
             byte[] toGive=A_OKAY;
+            if (!Options.isRegistered)
+                return A_OKAY;
             try {
                 toGive=utils.appendByteArray(Options.MYID,A_OKAY);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            Log.i(TAG, "APDU_SELECT triggered. Response: " + utils.bytesToHex(toGive));
             return toGive;
-
         }
+        else if(utils.isCommand(REGISTER,commandApdu))
+        {
+            byte[] newID=Arrays.copyOfRange(commandApdu,5,10);
+            op.RegisterID(newID);
+            byte[]comToSend;
+            try {
+                comToSend=eccOperations.registerDev(newID);
+                Options.setSecurityLevel(1);
+                op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey224()));
+                Options.setSecurityLevel(2);
+                op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey256()));
+                byte[] loadedID=op.LoadID();
+                Log.i(TAG,"id is "+utils.bytesToHex(loadedID));
+                return comToSend;
 
+            } catch (InvalidAlgorithmParameterException e) {
+                e.printStackTrace();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (NoSuchProviderException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return A_OKAY;
+        }
         else if (utils.isCommand(SERVERSIGCOM,commandApdu))
         {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-
-            byte [] ev= Arrays.copyOfRange(commandApdu,5,37);
-            byte [] sv= Arrays.copyOfRange(commandApdu,37,69);
+            byte secLevel=commandApdu[2];
+            Options.setByteSecLevel(secLevel);
+            byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
+            byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,commandApdu.length-1);
             try {
                 if(eccOperations.verifyServer(sv,ev,commandApdu))
                 {

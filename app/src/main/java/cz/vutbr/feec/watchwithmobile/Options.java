@@ -19,17 +19,15 @@ public class Options {
     private static BigInteger ServerPubKey256;
     private static BigInteger SecKey224;
     private static BigInteger ServerPubKey224;
-    public static byte [] MYID= new byte[]{(byte)0x10,
-            (byte)0x20,
-            (byte)0x30,
-            (byte)0x40,
-            (byte)0x50,
-    };
+    public static boolean isRegistered=false;
+    public static byte[] MYID;
     private Context context;
     public Options(Context context)
     {
         this.context=context;
+        //LoadKey();
     }
+
 
     public static  void setSecurityLevel(int level)
     {
@@ -60,6 +58,15 @@ public class Options {
             Log.i(TAG,"security has been set to 2");
         }
     }
+    public void RegisterID(byte[] ID)
+    {
+        SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("ID",utils.bytesToHex(ID));
+        editor.commit();
+        LoadID();
+    }
+
     public void SaveKey(BigInteger privateKey)
     {
         SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
@@ -78,21 +85,43 @@ public class Options {
 
 
     }
+    public byte[] LoadID()
+    {
+        try {
+            SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
+            String IDString;
+            IDString = sharedPref.getString("ID", String.valueOf(0));
+            MYID=utils.hexStringToByteArray(IDString);
+            return MYID;
+        }
+        catch (Exception e)
+        {
+            Log.i(TAG,"Exception in loadID");
+        }
+        return null;
+    }
     public void LoadKey()
     {
-        SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
-        String keyString;
-        //switch (SECURITY_LEVEL)
-        //{
-           // case 1:
-                keyString = sharedPref.getString("key224", String.valueOf(0));
-                SecKey224 = new BigInteger(keyString, 16);
-                Log.i("APDU", "I loaded the key224 it is " + utils.bytesToHex(utils.bytesFromBigInteger2(SecKey224)));
-                //break;
+        try {
+            SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
+            String keyString;
+            //switch (SECURITY_LEVEL)
+            //{
+            // case 1:
+            keyString = sharedPref.getString("key224", String.valueOf(0));
+            SecKey224 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key224 it is " + utils.bytesToHex(utils.bytesFromBigInteger2(SecKey224)));
+            //break;
             //case 2:
-                keyString = sharedPref.getString("key256", String.valueOf(0));
-                SecKey256 = new BigInteger(keyString, 16);
-                Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
+            keyString = sharedPref.getString("key256", String.valueOf(0));
+            SecKey256 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
+            isRegistered=true;
+        }
+       catch (Exception e)
+       {
+           Log.i(TAG,"Exception in loadKey");
+       }
                 //break;
 
         //}
