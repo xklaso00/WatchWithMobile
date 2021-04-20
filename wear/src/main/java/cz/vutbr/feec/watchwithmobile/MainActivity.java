@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -44,6 +45,7 @@ public class MainActivity extends WearableActivity {
     final static String TAG= "WatchMainApp";
     private long allStart;
     private long allEnd;
+    Options op;
     private static final byte[] A_OKAY ={ (byte)0x90,  //we send this to signalize everything is A_OKAY!
             (byte)0x00};
 
@@ -56,7 +58,7 @@ public class MainActivity extends WearableActivity {
         setContentView(R.layout.activity_main);
         textView =  findViewById(R.id.text);
         talkButton =  findViewById(R.id.talkClick);
-        Options op= new Options(this);
+        op= new Options(this);
         //op.SaveKey(new BigInteger("E83FC87A037C19A2E606033F506A7035DD795F3B8E77064991EB125C234686DC",16));
         //op.SaveKey(new BigInteger("929DED4DF80925348838B9D9F73F4DBA99BF08474B8BF277BFB5BC7D",16));
         op.LoadKey();
@@ -80,12 +82,14 @@ public class MainActivity extends WearableActivity {
         firstdone=false;
         seconddone=false;
         testDone=false;
+        regdone=false;
         textView.setText("Communication has been reseted!");
     }
 
     boolean firstdone=false;
     boolean testDone= false;
     boolean seconddone=false;
+    boolean regdone=false;
     //receiver to receive LocalBroadcasts from messageService Class
     public class Receiver extends BroadcastReceiver {
         @Override
@@ -154,6 +158,31 @@ public class MainActivity extends WearableActivity {
             {
                 ResetComs();
                 return;
+            }
+            else if(intent.getStringExtra("path").equals("pathRegister"))
+            {
+                if(regdone)
+                    return;
+                try {
+                    regdone=true;
+                    byte[] keys=eccOperations.registerDev();
+                    Options.setSecurityLevel(1);
+                    op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey224()));
+                    Options.setSecurityLevel(2);
+                    op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey256()));
+                    new SendMessage("/pathRegister",keys).start();
+                    op.LoadKey();
+                    return;
+
+                } catch (InvalidAlgorithmParameterException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (NoSuchProviderException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
         }

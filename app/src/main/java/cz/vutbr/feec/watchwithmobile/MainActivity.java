@@ -6,14 +6,18 @@ package cz.vutbr.feec.watchwithmobile;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.util.Log;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-//import android.support.v4.content.LocalBroadcastManager;
+//import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -55,18 +59,31 @@ public class MainActivity extends AppCompatActivity {
     long allTimeStart;
     long allTimeEnd;
     Button resetBttn;
-
+    ImageView onWatch;
+    ImageView offWatch;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textview = findViewById(R.id.textView);
         resetBttn=findViewById(R.id.ResetButton);
+        onWatch=findViewById(R.id.watchOnline);
+        offWatch=findViewById(R.id.watchOfflie);
+        IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+        Receiver messageReceiver = new Receiver();
+        HandlerThread handlerThread = new HandlerThread("htMA");
+        handlerThread.start();
+        Looper looper = handlerThread.getLooper();
+        Handler handler = new Handler(looper);
+        //this.registerReceiver(messageReceiver, messageFilter,null,handler);
+        //we are using modified LBM that should run on second thread, with classic LBM program gets stuck
+        LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
 
 
-        // IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
-       // Receiver messageReceiver = new Receiver();
-       // LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
+
+        //IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
+        //Receiver messageReceiver = new Receiver();
+        //LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
         Log.i("sap", "starting");
         Intent intent=new Intent(this.getApplicationContext(),MyHostApduService.class);
         startService(intent); //start MyHostApduService
@@ -104,25 +121,36 @@ public class MainActivity extends AppCompatActivity {
         @RequiresApi(api = Build.VERSION_CODES.KITKAT)
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (recive==false)
-                return;
-            if (intent.getStringExtra("path").equals("1")){
-                if (recive1==false)
-                    return;
-                else
+
+            if (intent.getStringExtra("path").equals("watchUpdate")){
+                Log.i("hello","got in main acc");
+                if(intent.getStringExtra("value").equals("on")) {
+
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onWatch.setVisibility(View.VISIBLE);
+                            offWatch.setVisibility(View.INVISIBLE);
+                        }
+                    });
+
+                }
+                else if(intent.getStringExtra("value").equals("off"))
                 {
-                    path1Response(intent);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onWatch.setVisibility(View.INVISIBLE);
+                            offWatch.setVisibility(View.VISIBLE);
+                        }
+                    });
+
                 }
 
+
             }
-            else if(intent.getStringExtra("path").equals("2")){
-                if (recive==false)
-                    return;
-               else
-                {
-                    path2Response(intent);
-                }
-            }
+
 
         }
     }
@@ -157,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     //what the program does when we get first  message from the watch
-    public void path1Response(Intent intent){
+    /*public void path1Response(Intent intent){
         allTimeStart=System.nanoTime();
         recive1=false; //simple boolean so if anything is send more times this function will not be triggered
         //randPoint=intent.getByteArrayExtra("message");
@@ -172,37 +200,8 @@ public class MainActivity extends AppCompatActivity {
 
 
         return;
-    }
+    }*/
     //program does this after receiving second message from watch
-    public void path2Response(Intent intent)
-    {
-        recive=false;
-        byte[] signed = intent.getByteArrayExtra("message");
-        BigInteger S= new BigInteger(1,signed);
-        try {
-            Log.i(TAG,"Signature from watch is: "+ utilsV2.bytesToHex(signed));
-            long startTime=System.nanoTime();
-            boolean isLegit=eccOp.signVer(S,randPoint,eccOp.givePub(),hashToSign); //ver in java for benchmark, will not be used in final app if verify on phone is needed
-            long timeAll=System.nanoTime()-startTime;
-            long start2=System.nanoTime();
-            int[]pubInt= utilsV2.byteArrayToItArray(utilsV2.reverseByte(eccOp.givePubDecoded()));
-            int[]signInt= utilsV2.byteArrayToItArray(utilsV2.reverseByte32(signed));
-            int[]hashInt= utilsV2.byteArrayToItArray(utilsV2.reverseByte32(hashToSign));
-            int [] randInt= utilsV2.byteArrayToItArray(utilsV2.reverseByte(eccOp.decodeEncoded(randPoint)));
-
-            boolean isitlegitnow=verSignC(signInt,randInt,pubInt,hashInt); //verify in C, much faster
-            long end2=System.nanoTime()-start2;
-            //Log.i(TAG,"is it legit in C? "+isitlegitnow);
-            Log.i(TAG, "In C verification took "+end2/1000000+"ms");
-            Log.i(TAG,"In java verification took "+timeAll/1000000+"ms");
-            Log.i(TAG,"Is the signature valid java and C? "+isLegit+isitlegitnow);
-            allTimeEnd=System.nanoTime();
-            Log.i(TAG,"Communication and verification took "+(allTimeEnd-allTimeStart)/1000000+"ms");
-            textview.setText("Signature is here is it legit? "+isLegit);
-            return;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+    
     public native boolean verSignC(int[] sign,int[] rand,int[] pub,int[]hash);
 }

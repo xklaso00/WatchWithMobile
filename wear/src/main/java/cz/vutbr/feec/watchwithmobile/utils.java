@@ -1,6 +1,8 @@
 package cz.vutbr.feec.watchwithmobile;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -252,6 +254,12 @@ public class utils {
         }
         return newByte;
     }
-
+    public static byte[] appendByteArray(byte[] arr1,byte[] arr2) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        output.write(arr1);
+        output.write(arr2);
+        byte[] result=output.toByteArray();
+        return result;
+    }
 
 }

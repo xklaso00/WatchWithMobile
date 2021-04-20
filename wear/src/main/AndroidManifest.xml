@@ -27,6 +27,7 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/path2" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/path3" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/pathReset" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/pathRegister" />
             </intent-filter>
         </service>
     </application>

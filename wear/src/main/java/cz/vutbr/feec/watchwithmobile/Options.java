@@ -18,7 +18,7 @@ public class Options {
     {
         this.context=context;
     }
-    private static  void setSecurityLevel(int level)
+    public static  void setSecurityLevel(int level)
     {
         if (level>0&&level<5)
         {
@@ -52,22 +52,23 @@ public class Options {
     }
     public void LoadKey()
     {
-        SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.Watchkeys", Context.MODE_PRIVATE);
-        String keyString;
-        //switch (SECURITY_LEVEL)
-       // {
-           // case 1:
-                keyString = sharedPref.getString("key224", String.valueOf(0));
-                SecKey224 = new BigInteger(keyString, 16);
-                Log.i("APDU", "I loaded the key224 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey224)));
-                //break;
-            //case 2:
-                keyString = sharedPref.getString("key256", String.valueOf(0));
-                SecKey256 = new BigInteger(keyString, 16);
-                Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
-                //break;
+        try {
+            SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.Watchkeys", Context.MODE_PRIVATE);
+            String keyString;
+            keyString = sharedPref.getString("key224", String.valueOf(0));
+            SecKey224 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key224 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey224)));
 
-       // }
+            keyString = sharedPref.getString("key256", String.valueOf(0));
+            SecKey256 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
+        }
+        catch ( Exception e)
+        {
+            Log.i("WatchKeys","Exception in load keys");
+        }
+
+
 
     }
     public static  BigInteger getPrivateKey()

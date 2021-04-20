@@ -6,6 +6,9 @@ public class Example {
     public static boolean gotFirstLBM=false;
     public static boolean gotSecondLBM=false;
     public static boolean end=false;
+    public static boolean gotRegister=false;
+    public static boolean startedRegister=false;
+    public static boolean readyToSendRegister=false;
     public static void Reset()
     {
         GotIt=false;

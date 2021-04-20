@@ -21,6 +21,7 @@ public class Options {
     private static BigInteger ServerPubKey224;
     public static boolean isRegistered=false;
     public static byte[] MYID;
+    public static int MaxAltDev=1;
     private Context context;
     public Options(Context context)
     {

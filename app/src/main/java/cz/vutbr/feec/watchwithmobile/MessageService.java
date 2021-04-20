@@ -54,6 +54,16 @@ public class MessageService extends WearableListenerService {
             Log.i("APDU","Got test msg in service");
             //return;
         }
+        else if(messageEvent.getPath().equals("/pathRegister"))
+        {
+            byte[] watchKeys=messageEvent.getData();
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            messageIntent.putExtra("data", watchKeys);
+            messageIntent.putExtra("path", "pathRegister");
+            LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
+            Log.i("APDU","Got register from watch");
+        }
         else {
             super.onMessageReceived(messageEvent);
         }

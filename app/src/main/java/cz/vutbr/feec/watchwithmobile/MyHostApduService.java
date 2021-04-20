@@ -106,11 +106,14 @@ public class MyHostApduService extends HostApduService {
             (byte)0x88};
     private static final byte[] REGISTER={(byte)0x80,
             (byte)0x09};
+    private static final byte[] REGISTERDEV={(byte)0x80,
+            (byte)0x10};
     EccOperations eccOperations = new EccOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
     boolean serverLegit=false;
     byte[] halfMsg;
+    byte[] keysFromWatch;
     boolean m1sent=false;
     boolean m2sent=false;
     Options op= new Options(this);
@@ -188,6 +191,23 @@ public class MyHostApduService extends HostApduService {
                 e.printStackTrace();
             }
             return NOTYET;
+        }
+        else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Example.startedRegister)
+        {
+            if(Byte.compare(commandApdu[2],utils.intToHexByte(Options.MaxAltDev))>=1)
+                return UNKNOWN_CMD_SW;
+            //here you could implement different code for different devices, since we have Index of device in commapdu[2]
+            //but we are only working with one other device
+            new SendMessage("/pathRegister",A_OKAY).start();
+            Example.startedRegister=true;
+            return NOTYET;
+        }
+        else if(utils.isCommand(REGISTERDEV,commandApdu)&&Example.startedRegister)
+        {
+            if(!Example.gotRegister)
+                return NOTYET;
+            else
+                return keysFromWatch;
         }
         else if (utils.isCommand(AESTESTCOM,commandApdu))
         {
@@ -318,10 +338,15 @@ public class MyHostApduService extends HostApduService {
         boolean exit = false;
         public void run() {
 
-            Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
+            //Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
+            Intent messageIntent = new Intent(); //we have to broadcast intent so create one
+            messageIntent.setAction(Intent.ACTION_SEND);
+            messageIntent.putExtra("path", "watchUpdate");
+            messageIntent.putExtra("value", "on");
+            LocalBroadcastManager.getInstance(MyHostApduService.this).sendBroadcastSync(messageIntent);
             Log.i("WatchComms", "Starting connection to watch");
             while(Example.end==false) {
-
+                Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
                 try {
 
                     List<Node> nodes = Tasks.await(wearableList);
@@ -329,7 +354,18 @@ public class MyHostApduService extends HostApduService {
                         Task<Integer> sendMessageTask = Wearable.getMessageClient(MyHostApduService.this).sendMessage(node.getId(), path, message);
                     }
                     if(nodes.isEmpty())
+                    {
                         Log.i("WatchComs","Couldn't connect to the watch");
+                        messageIntent = new Intent(); //we have to broadcast intent so create one
+                        messageIntent.setAction(Intent.ACTION_SEND);
+                        messageIntent.putExtra("path", "watchUpdate");
+                        messageIntent.putExtra("value", "off");
+                        LocalBroadcastManager.getInstance(MyHostApduService.this).sendBroadcastSync(messageIntent);
+                        Example.end=true;
+                        break;
+                    }
+
+
                     sleep(1000);
 
                 } catch (ExecutionException exception) {
@@ -392,6 +428,14 @@ public class MyHostApduService extends HostApduService {
             else if(intent.getStringExtra("path").equals("4")) {
                 startTestMsg();
                 new SendMessage("/pathReset",A_OKAY).start();
+            }
+            else if(intent.getStringExtra("path").equals("pathRegister")){
+                if(Example.gotRegister)
+                    return;
+                Example.gotRegister=true;
+                keysFromWatch=intent.getByteArrayExtra("data");
+                Example.readyToSendRegister=true;
+
             }
         }
     }

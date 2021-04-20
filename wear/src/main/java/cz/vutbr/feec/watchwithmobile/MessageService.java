@@ -56,6 +56,14 @@ utils utils= new utils();
             messageIntent.putExtra("path","pathReset");
             LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
         }
+        else if(messageEvent.getPath().equals("/pathRegister"))
+        {
+            Intent messageIntent = new Intent();
+            messageIntent.setAction(Intent.ACTION_SEND);
+            Log.i("WatchApp","I got Register msg ");
+            messageIntent.putExtra("path","pathRegister");
+            LocalBroadcastManager.getInstance(this).sendBroadcast(messageIntent);
+        }
         else {
             super.onMessageReceived(messageEvent);
         }

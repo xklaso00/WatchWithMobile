@@ -76,3 +76,45 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_CforTk2Watch(JNIEnv *env, jobje
     return newArray;
 
 }
+jbyte * pub32= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+jbyte * pub28= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_GenerateSecKey(JNIEnv *env, jobject /* this */,jint SecLevel) {
+    jbyte * randNum= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
+    if (SecLevel==1)
+    {
+        uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(randNum), uECC_secp224r1()->n, nativeNCount);
+        byteLenght=28;
+        uECC_point_mult(reinterpret_cast<uECC_word_t *>(pub28), uECC_secp224r1()->G,
+                        reinterpret_cast<const uECC_word_t *>(randNum), uECC_secp224r1());
+    }
+    else
+    {
+        uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(randNum), uECC_secp256k1()->n, nativeNCount);
+        byteLenght=32;
+        uECC_point_mult(reinterpret_cast<uECC_word_t *>(pub32), uECC_secp256k1()->G,
+                        reinterpret_cast<const uECC_word_t *>(randNum), uECC_secp256k1());
+    }
+    jbyteArray newArray = env->NewByteArray(byteLenght);
+    env->SetByteArrayRegion(newArray, 0,byteLenght, randNum);
+    return newArray;
+}
+extern "C"
+JNIEXPORT jbyteArray  JNICALL
+Java_cz_vutbr_feec_watchwithmobile_EccOperations_GetPubKey(JNIEnv *env, jobject /* this */,jint SecLevel) {
+    if (SecLevel==1)
+    {
+        byteLenght=28;
+        jbyteArray newArray = env->NewByteArray(byteLenght*2);
+        env->SetByteArrayRegion(newArray, 0,byteLenght*2, pub28);
+        return newArray;
+    }
+    else{
+        byteLenght=32;
+        jbyteArray newArray = env->NewByteArray(byteLenght*2);
+        env->SetByteArrayRegion(newArray, 0,byteLenght*2, pub32);
+        return newArray;
+    }
+
+}

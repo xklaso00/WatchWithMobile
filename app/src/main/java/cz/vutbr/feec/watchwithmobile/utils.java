@@ -301,4 +301,11 @@ public class utils {
         }
         return data;
     }
+    public static byte intToHexByte(int number)
+    {
+        String hex = Integer.toHexString(number);
+        byte toGive=Byte.parseByte(hex,16);
+        return  toGive;
+
+    }
 }
