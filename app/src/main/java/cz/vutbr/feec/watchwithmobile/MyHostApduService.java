@@ -64,12 +64,7 @@ public class MyHostApduService extends HostApduService {
         op.LoadID();
         return START_NOT_STICKY;
     }
-    byte [] MYID= new byte[]{(byte)0x10,
-            (byte)0x20,
-            (byte)0x30,
-            (byte)0x40,
-            (byte)0x50,
-    };
+
 
     long Start1;
     long StartBlockWithWatch;
@@ -88,14 +83,7 @@ public class MyHostApduService extends HostApduService {
     };
     private static final byte[] A_OKAY ={ (byte)0x90,  //we send this to signalize everything is A_OKAY!
             (byte)0x00};
-    private static final byte[] GIVERAND ={(byte)0x80, //start of command instuction giverand
-            (byte)0x01};
-    private static final byte[] SIGNTHIS ={(byte)0x80, //start of command signthis
-            (byte)0x02};
-    private static final byte[] WATCHTHIS ={(byte)0x80, //start of command signthis
-            (byte)0x03};
-    private static final byte[] RANDWATCH ={(byte)0x80,
-            (byte)0x04};
+
     private static final byte[] SERVERSIGCOM ={(byte)0x80,
             (byte)0x05};
     private static final byte[] SERVERSIGCOMWITHWATCH ={(byte)0x80,
@@ -108,6 +96,8 @@ public class MyHostApduService extends HostApduService {
             (byte)0x09};
     private static final byte[] REGISTERDEV={(byte)0x80,
             (byte)0x10};
+    private static final byte[] RESULTOFAUTH={(byte)0x80,
+            (byte)0x20};
     EccOperations eccOperations = new EccOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
@@ -130,7 +120,7 @@ public class MyHostApduService extends HostApduService {
         // First command: select AID
         if (utils.isEqual(APDU_SELECT, commandApdu)) {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
-
+            SendToMainAcc("APDUcoms","on");
             Example.end=true;
             startApdu=System.nanoTime();
             byte[] toGive=A_OKAY;
@@ -146,6 +136,7 @@ public class MyHostApduService extends HostApduService {
         }
         else if(utils.isCommand(REGISTER,commandApdu))
         {
+            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             byte[] newID=Arrays.copyOfRange(commandApdu,5,10);
             op.RegisterID(newID);
             byte[]comToSend;
@@ -190,7 +181,7 @@ public class MyHostApduService extends HostApduService {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return NOTYET;
+            return UNKNOWN_CMD_SW;
         }
         else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Example.startedRegister)
         {
@@ -283,6 +274,17 @@ public class MyHostApduService extends HostApduService {
             return NOTYET;
 
         }
+        else if(utils.isCommand(RESULTOFAUTH,commandApdu))
+        {
+            String res;
+            if (Byte.compare(commandApdu[2],(byte)0x00)==0)
+                res="YES";
+            else
+                res="NO";
+            Log.i(TAG,"Result of Authentication is "+res);
+            SendToMainAcc("Result",res);
+            return A_OKAY;
+        }
         else {
 
             return UNKNOWN_CMD_SW;
@@ -295,6 +297,14 @@ public class MyHostApduService extends HostApduService {
         Example.GotIt=false;
         Example.gotSecondLBM=false;
         Example.gotFirstLBM=false;
+    }
+    public void SendToMainAcc(String path, String Value)
+    {
+        Intent messageIntent = new Intent(); //we have to broadcast intent so create one
+        messageIntent.setAction(Intent.ACTION_SEND);
+        messageIntent.putExtra("path", path);
+        messageIntent.putExtra("value", Value);
+        LocalBroadcastManager.getInstance(MyHostApduService.this).sendBroadcastSync(messageIntent);
     }
 
     class SendMessage extends Thread {
@@ -339,11 +349,7 @@ public class MyHostApduService extends HostApduService {
         public void run() {
 
             //Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
-            Intent messageIntent = new Intent(); //we have to broadcast intent so create one
-            messageIntent.setAction(Intent.ACTION_SEND);
-            messageIntent.putExtra("path", "watchUpdate");
-            messageIntent.putExtra("value", "on");
-            LocalBroadcastManager.getInstance(MyHostApduService.this).sendBroadcastSync(messageIntent);
+            boolean updatedView=false;
             Log.i("WatchComms", "Starting connection to watch");
             while(Example.end==false) {
                 Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
@@ -356,16 +362,16 @@ public class MyHostApduService extends HostApduService {
                     if(nodes.isEmpty())
                     {
                         Log.i("WatchComs","Couldn't connect to the watch");
-                        messageIntent = new Intent(); //we have to broadcast intent so create one
-                        messageIntent.setAction(Intent.ACTION_SEND);
-                        messageIntent.putExtra("path", "watchUpdate");
-                        messageIntent.putExtra("value", "off");
-                        LocalBroadcastManager.getInstance(MyHostApduService.this).sendBroadcastSync(messageIntent);
+
+                        SendToMainAcc("watchUpdate","off");
                         Example.end=true;
                         break;
                     }
+                    if(!updatedView) {
+                        SendToMainAcc("watchUpdate","on");
 
-
+                        updatedView=true;
+                    }
                     sleep(1000);
 
                 } catch (ExecutionException exception) {

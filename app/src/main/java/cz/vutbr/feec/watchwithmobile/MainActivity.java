@@ -3,8 +3,9 @@ package cz.vutbr.feec.watchwithmobile;
 
 
 //import android.support.v7.app.AppCompatActivity;
-import android.app.Application;
 import android.content.BroadcastReceiver;
+import android.graphics.drawable.AnimatedVectorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -18,28 +19,15 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 
-import com.google.android.gms.wearable.Node;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.Tasks;
-import com.google.android.gms.wearable.Wearable;
-
-
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -48,16 +36,17 @@ public class MainActivity extends AppCompatActivity {
     }
     String toSend=null;
     final static String TAG="MOBILE APP";
+    ImageView doneImage;
+    ImageView circleImage,crossImage, crossCircle;
+    AnimatedVectorDrawableCompat avdc;
+    AnimatedVectorDrawable avd;
+    ProgressBar APDUProgressImage;
+    TextView introText;
 
-    TextView textview;
-    UtilsV2 utilsV2 = new UtilsV2();
-    ECCOp eccOp=new ECCOp();
-    byte [] hashToSign;
-    byte[] randPoint;
-    boolean recive=true;
-    boolean recive1=true;
+
     long allTimeStart;
     long allTimeEnd;
+    TextView ProgressTextView;
     Button resetBttn;
     ImageView onWatch;
     ImageView offWatch;
@@ -65,10 +54,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        textview = findViewById(R.id.textView);
+        doneImage=findViewById(R.id.done);
+        crossImage=findViewById(R.id.Cross);
+        circleImage=findViewById(R.id.Circle);
+        crossCircle=findViewById(R.id.circleIMg);
+        introText = findViewById(R.id.introText);
+        ProgressTextView=findViewById(R.id.progressText);
         resetBttn=findViewById(R.id.ResetButton);
         onWatch=findViewById(R.id.watchOnline);
         offWatch=findViewById(R.id.watchOfflie);
+        APDUProgressImage=findViewById(R.id.APDUProgress);
         IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
         Receiver messageReceiver = new Receiver();
         HandlerThread handlerThread = new HandlerThread("htMA");
@@ -79,8 +74,6 @@ public class MainActivity extends AppCompatActivity {
         //we are using modified LBM that should run on second thread, with classic LBM program gets stuck
         LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter,looper);
 
-
-
         //IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
         //Receiver messageReceiver = new Receiver();
         //LocalBroadcastManager.getInstance(this).registerReceiver(messageReceiver, messageFilter);
@@ -89,14 +82,9 @@ public class MainActivity extends AppCompatActivity {
         startService(intent); //start MyHostApduService
 
         Log.i("sap", "starting service?");
-        //Options op= new Options(this);
-        //op.SaveKey(new BigInteger("07B6272FC66B008BF4F772ACB2FAD14B0E08EC3A6DFD0F38716F47A8",16));
-        //op.SaveKey(new BigInteger("B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",16));
-        //op.LoadKey();
-        //op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
-        //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
-        //op.LoadServerKey();
+
         resetBttn.setOnClickListener(new View.OnClickListener() {
+
             @Override
             public void onClick(View v) {
                 if(Example.end==true)
@@ -104,10 +92,23 @@ public class MainActivity extends AppCompatActivity {
                     reWatchConnection();
                 }
                 Example.Reset();
+                resetUI();
                 Toast.makeText(getApplicationContext(),"Communication has been restarted",Toast.LENGTH_LONG).show();
+
+
             }
         });
 
+    }
+    public void resetUI()
+    {
+        circleImage.setVisibility(View.INVISIBLE);
+        doneImage.setVisibility(View.INVISIBLE);
+        crossImage.setVisibility(View.INVISIBLE);
+        crossCircle.setVisibility(View.INVISIBLE);
+        ProgressTextView.setText("");
+        APDUProgressImage.setVisibility(View.INVISIBLE);
+        introText.setVisibility(View.VISIBLE);
     }
     public void reWatchConnection()
     {
@@ -116,6 +117,24 @@ public class MainActivity extends AppCompatActivity {
         messageIntent.putExtra("path", "4");
         LocalBroadcastManager.getInstance(this).sendBroadcastSync(messageIntent);
     }
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void showDone(ImageView toUse)
+    {
+        toUse.setVisibility(View.VISIBLE);
+
+        Drawable drawable=toUse.getDrawable();
+        if(drawable instanceof AnimatedVectorDrawableCompat)
+        {
+            avdc=(AnimatedVectorDrawableCompat) drawable;
+            avdc.start();
+        }
+        else if(drawable instanceof  AnimatedVectorDrawable)
+        {
+            avd=(AnimatedVectorDrawable) drawable;
+            avd.start();
+
+        }
+    }
 
     public class Receiver extends BroadcastReceiver {
         @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -123,7 +142,6 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
 
             if (intent.getStringExtra("path").equals("watchUpdate")){
-                Log.i("hello","got in main acc");
                 if(intent.getStringExtra("value").equals("on")) {
 
 
@@ -147,61 +165,54 @@ public class MainActivity extends AppCompatActivity {
                     });
 
                 }
-
-
             }
-
-
-        }
-    }
-
-
-    //thread to send message trough data layer
-    class SendMessageDef extends Thread {
-        String path;
-        byte[] message;
-
-        SendMessageDef(String p, byte[] m) {
-            path = p;
-            message = m;
-        }
-
-        public void run() {
-
-            Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
-            try {
-
-                List<Node> nodes = Tasks.await(wearableList);
-                for (Node node : nodes) {
-                    Task<Integer> sendMessageTask = Wearable.getMessageClient(MainActivity.this).sendMessage(node.getId(), path, message);
-
+            else if(intent.getStringExtra("path").equals("Result"))
+            {
+                if(intent.getStringExtra("value").equals("YES"))
+                {
+                    runOnUiThread(new Runnable() {
+                        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                        @Override
+                        public void run() {
+                            APDUProgressImage.setVisibility(View.INVISIBLE);
+                            ProgressTextView.setText("Authentication successful!");
+                            circleImage.setVisibility(View.VISIBLE);
+                            showDone(doneImage);
+                        }
+                    });
                 }
+                else {
+                    runOnUiThread(new Runnable() {
+                        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                        @Override
+                        public void run() {
+                            APDUProgressImage.setVisibility(View.INVISIBLE);
+                            crossCircle.setVisibility(View.VISIBLE);
+                            ProgressTextView.setText("Authentication failed!");
+                            showDone(crossImage);
+                        }
+                    });
+                }
+            }
+            else if(intent.getStringExtra("path").equals("APDUcoms"))
+            {
+                if(intent.getStringExtra("value").equals("on"))
+                {
+                    runOnUiThread(new Runnable() {
+                        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                        @Override
+                        public void run() {
+                            resetUI();
+                            introText.setVisibility(View.INVISIBLE);
+                            ProgressTextView.setText("Authentication in progress...");
+                            APDUProgressImage.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            }
 
-            } catch (ExecutionException exception) {
-            }
-            catch (InterruptedException exception) {
-            }
-            return;
+
         }
     }
-    //what the program does when we get first  message from the watch
-    /*public void path1Response(Intent intent){
-        allTimeStart=System.nanoTime();
-        recive1=false; //simple boolean so if anything is send more times this function will not be triggered
-        //randPoint=intent.getByteArrayExtra("message");
-        Log.i(TAG,"Communication started...");
-        //Log.i(TAG,"Random point from watch is: "+ utilsV2.bytesToHex(randPoint));
 
-        // hashToSign= utilsV2.generateHashToSend(randPoint,eccOp.givePub()); //generate hash that prover has to sign
-        hashToSign=intent.getByteArrayExtra("message");
-        Log.i(TAG,"Hash for watch to sign is: "+ utilsV2.bytesToHex(hashToSign));
-        //send the hash to watch with path 1
-        new SendMessageDef("/path1", hashToSign).start();
-
-
-        return;
-    }*/
-    //program does this after receiving second message from watch
-    
-    public native boolean verSignC(int[] sign,int[] rand,int[] pub,int[]hash);
 }
