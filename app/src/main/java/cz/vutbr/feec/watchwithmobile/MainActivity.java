@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getSupportActionBar().hide();
         doneImage=findViewById(R.id.done);
         crossImage=findViewById(R.id.Cross);
         circleImage=findViewById(R.id.Circle);
@@ -168,27 +169,37 @@ public class MainActivity extends AppCompatActivity {
             }
             else if(intent.getStringExtra("path").equals("Result"))
             {
-                if(intent.getStringExtra("value").equals("YES"))
+                final String msgToShow;
+                if(intent.getStringExtra("value").equals("YES")||intent.getStringExtra("value").equals("RYES"))
                 {
+                    if(intent.getStringExtra("value").equals("YES"))
+                        msgToShow="Authentication successful!";
+                    else
+                        msgToShow="Registration Successful!";
                     runOnUiThread(new Runnable() {
                         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
                         @Override
                         public void run() {
                             APDUProgressImage.setVisibility(View.INVISIBLE);
-                            ProgressTextView.setText("Authentication successful!");
+                            ProgressTextView.setVisibility(View.VISIBLE);
+                            ProgressTextView.setText(msgToShow);
                             circleImage.setVisibility(View.VISIBLE);
                             showDone(doneImage);
                         }
                     });
                 }
                 else {
+                    if(intent.getStringExtra("value").equals("NO"))
+                        msgToShow="Authentication Failed!";
+                    else
+                        msgToShow="Registration Failed!";
                     runOnUiThread(new Runnable() {
                         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
                         @Override
                         public void run() {
                             APDUProgressImage.setVisibility(View.INVISIBLE);
                             crossCircle.setVisibility(View.VISIBLE);
-                            ProgressTextView.setText("Authentication failed!");
+                            ProgressTextView.setText(msgToShow);
                             showDone(crossImage);
                         }
                     });

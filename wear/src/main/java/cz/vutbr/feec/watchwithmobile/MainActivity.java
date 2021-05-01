@@ -46,6 +46,7 @@ public class MainActivity extends WearableActivity {
     private long allStart;
     private long allEnd;
     Options op;
+    int second=0;
     private static final byte[] A_OKAY ={ (byte)0x90,  //we send this to signalize everything is A_OKAY!
             (byte)0x00};
 
@@ -83,6 +84,8 @@ public class MainActivity extends WearableActivity {
         seconddone=false;
         testDone=false;
         regdone=false;
+        GlobalBooleans.firstComDone=false;
+        GlobalBooleans.secondComDone=false;
         textView.setText("Communication has been reseted!");
     }
 
@@ -98,11 +101,16 @@ public class MainActivity extends WearableActivity {
                 //return;
 
             if (intent.getStringExtra("path").equals("path1")){
+                second++;
+                Log.i(TAG,"I got path 1 in LBM");
                 if (firstdone==true)
                     return;
                 firstdone=true;
+                if(GlobalBooleans.firstComDone)
+                    return;
+                GlobalBooleans.firstComDone=true;
                 allStart=System.nanoTime();
-                Log.i(TAG,"I got path 1 in LBM");
+
                 byte [] Tv= intent.getByteArrayExtra("data");
                 byte SecurityByte=intent.getByteExtra("Security", (byte) 0x02);
                 Options.setByteSecLevel(SecurityByte);
@@ -126,14 +134,19 @@ public class MainActivity extends WearableActivity {
             }
             else if(intent.getStringExtra("path").equals("path2"))
             {
+                second++;
+                Log.i(TAG,"I got path 2 in LBM");
                 if (seconddone==true)
                     return;
                 seconddone=true;
+                if(GlobalBooleans.secondComDone)
+                    return;
+                GlobalBooleans.secondComDone=true;
                 byte[] hash= intent.getByteArrayExtra("message");
                 long startTime=System.nanoTime();
 
 
-
+                Log.i(TAG,"Hash is "+utils.bytesToHex(hash));
                 signedHash= eccOperations.SignHash(hash);
                 long endTime= System.nanoTime();
                 Log.i(TAG,"Signing of the hash on watch took "+(endTime-startTime)+" ns");
@@ -142,7 +155,7 @@ public class MainActivity extends WearableActivity {
                 Log.i(TAG,"Signature has been sent.");
                 allEnd=System.nanoTime();
                 Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
-                textView.setText("Communication ended.");
+                textView.setText("Communication ended. "+second);
                 return;
             }
             else if(intent.getStringExtra("path").equals("path3"))

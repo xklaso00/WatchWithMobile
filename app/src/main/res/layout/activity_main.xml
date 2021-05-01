@@ -8,6 +8,7 @@
     android:paddingLeft="@dimen/horizontal_margin"
     android:paddingRight="@dimen/horizontal_margin"
     android:paddingTop="@dimen/vertical_margin"
+    android:background="@drawable/background_v4"
     tools:context=".MainActivity">
 
 
@@ -29,19 +30,21 @@
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/watchOnline"
-            app:layout_constraintVertical_bias="0.285" />
+            app:layout_constraintVertical_bias="0.639" />
 
         <Button
             android:id="@+id/ResetButton"
-            android:layout_width="124dp"
+            android:layout_width="150dp"
             android:layout_height="wrap_content"
-            android:text="Reset Coms"
+            android:text="Reset Communication"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/custom_button"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.064"
+            app:layout_constraintHorizontal_bias="0.105"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.915" />
+            app:layout_constraintVertical_bias="0.886" />
 
         <ProgressBar
             android:id="@+id/APDUProgress"
@@ -58,7 +61,7 @@
             app:layout_constraintHorizontal_bias="0.497"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.367" />
+            app:layout_constraintVertical_bias="0.434" />
 
         <ImageView
             android:id="@+id/watchOnline"
@@ -119,8 +122,10 @@
             android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.608"
             app:srcCompat="@drawable/full_circle" />
 
         <ImageView
@@ -133,6 +138,7 @@
             app:layout_constraintEnd_toEndOf="@+id/Circle"
             app:layout_constraintStart_toStartOf="@+id/Circle"
             app:layout_constraintTop_toTopOf="@+id/Circle"
+            app:layout_constraintVertical_bias="1.0"
             app:srcCompat="@drawable/avd_done"
             tools:ignore="VectorDrawableCompat" />
 
@@ -140,14 +146,15 @@
             android:id="@+id/progressText"
             android:layout_width="343dp"
             android:layout_height="42dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="196dp"
+            android:layout_marginTop="16dp"
             android:gravity="center"
             android:textSize="18sp"
             app:layout_constraintBottom_toTopOf="@+id/ResetButton"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.428"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/Circle" />
+            app:layout_constraintTop_toBottomOf="@+id/Circle"
+            app:layout_constraintVertical_bias="0.149" />
 
         <ImageView
             android:id="@+id/Cross"
@@ -170,10 +177,10 @@
             android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.512"
+            app:layout_constraintHorizontal_bias="0.497"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.291"
+            app:layout_constraintVertical_bias="0.431"
             app:srcCompat="@drawable/circle" />
 
 

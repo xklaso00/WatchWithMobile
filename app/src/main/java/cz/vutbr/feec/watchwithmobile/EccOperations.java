@@ -21,6 +21,9 @@ import java.security.Security;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -166,9 +169,21 @@ public class EccOperations {
         return utils.bytesFromBigInteger(SKA);
     }
     byte[] verServerMessage;
-    public boolean verifyServer(byte[] sv, byte [] ev,byte[] message) throws NoSuchAlgorithmException, IOException {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public boolean verifyServer(byte[] sv, byte [] ev, byte[] message, byte[] timeStamp) throws NoSuchAlgorithmException, IOException {
         long startTime = System.nanoTime();
         verServerMessage=message;
+        byte[] ourTime=GenerateTimeStamp();
+        if(Options.timeChecking) {
+            if (utils.isEqual(timeStamp, ourTime))
+                Log.i("ECCOP", "Time stamps are the same");
+            else {
+                if (utils.isEqual(Arrays.copyOfRange(timeStamp, 0, timeStamp.length - 1), Arrays.copyOfRange(ourTime, 0, ourTime.length - 1)))
+                    Log.i("ECCOP", "Time stamps are almost the same");
+                else
+                    return false;
+            }
+        }
         ECPoint PubServerEC= cs.getCurve().decodePoint(utils.bytesFromBigInteger(Options.getServerPubKey()));
 
         long startTime2=System.nanoTime();
@@ -185,11 +200,11 @@ public class EccOperations {
             byte[] pubCByte = PubServerEC.getEncoded(false);
             pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
 
-            Log.i("APDU", "sv is " + utils.bytesToHex(sv));
+           /* Log.i("APDU", "sv is " + utils.bytesToHex(sv));
             Log.i("APDU", "ev is " + utils.bytesToHex(ev));
         Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
         Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
-        Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));
+        Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));*/
 
             byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
 
@@ -209,13 +224,13 @@ public class EccOperations {
 
             //end of C implementation
 
-            boolean isItLegit=compareHashesOfServer(ev);
+            boolean isItLegit=compareHashesOfServer(ev,timeStamp);
         long duration2 = System.nanoTime() - startTime2;
         Log.i("Timer", "Ver in C took " + duration2 / 1000000 + " ms");
             if(isItLegit)
                 return true;
             computeVerInJava(sv,ev);
-            isItLegit=compareHashesOfServer(ev);
+            isItLegit=compareHashesOfServer(ev,timeStamp);
         long duration = System.nanoTime() - startTime;
         Log.i("Timer", "All and all verify took  " + duration / 1000000 + " ms");
             if(isItLegit)
@@ -240,9 +255,11 @@ public class EccOperations {
         TvPoint=res.getEncoded(true);
         return tv;
     }
-    public boolean compareHashesOfServer(byte [] ev) throws IOException, NoSuchAlgorithmException {
+
+    public boolean compareHashesOfServer(byte [] ev, byte[] timeStamp) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = null;
         String hashFunction;
+
         if(Options.SECURITY_LEVEL==1)
             hashFunction="SHA-224";
         else
@@ -252,6 +269,7 @@ public class EccOperations {
         outputStream.write(Options.MYID);
         outputStream.write(utils.bytesFromBigInteger(cs.getN()));
         outputStream.write(TvPoint);
+        outputStream.write(timeStamp);
         byte connectedBytes[] = outputStream.toByteArray();
         byte[] hashToVer = digest.digest(connectedBytes);
         Log.i("APDU", "hashToVer is  " + utils.bytesToHex(hashToVer));
@@ -294,7 +312,7 @@ public class EccOperations {
         outputStream.write(verServerMessage);
         byte connectedBytes[] = outputStream.toByteArray( );
         byte [] hash = digest.digest(connectedBytes);
-        Log.i("APDU",utils.bytesToHex(hash));
+        Log.i("APDU"," Sig is"+utils.bytesToHex(hash));
         outputStream.reset();
 
 
@@ -431,6 +449,15 @@ public class EccOperations {
         privateKey224=genertateSecKey();
         byte[] bothKeys=utils.appendByteArray(PubKey256,PubKey224);
         return bothKeys;
+    }
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static byte[] GenerateTimeStamp()
+    {
+        String stamp= ZonedDateTime
+                .now( ZoneId.systemDefault() )
+                .format( DateTimeFormatter.ofPattern( "uuuu.MM.dd.HH.mm.ss" ) );
+        byte[] timeBytes=stamp.getBytes();
+        return timeBytes;
     }
     public byte[] getPrivateKey256()
     {

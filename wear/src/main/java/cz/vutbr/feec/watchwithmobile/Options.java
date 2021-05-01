@@ -47,6 +47,7 @@ public class Options {
                 editor.commit();
                 break;
         }
+        LoadKey();
 
 
     }

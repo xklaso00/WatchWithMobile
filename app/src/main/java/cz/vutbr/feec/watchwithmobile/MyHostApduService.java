@@ -57,11 +57,14 @@ public class MyHostApduService extends HostApduService {
         //op.RegisterID(MYID);
         //byte[] loadedID=op.LoadID();
        // Log.i(TAG,"id is "+utils.bytesToHex(loadedID));
-       // op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
+        Options.setSecurityLevel(1);
+         //op.SaveServerKey(new BigInteger("02F72317633AED4A066FD70F0C90F8F0E8BBD4B9EAD81CD44A4F618F71",16));
+         Options.setSecurityLevel(2);
         //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
         op.LoadServerKey();
         op.LoadKey();
         op.LoadID();
+        op.delIDForTest();
         return START_NOT_STICKY;
     }
 
@@ -98,6 +101,10 @@ public class MyHostApduService extends HostApduService {
             (byte)0x10};
     private static final byte[] RESULTOFAUTH={(byte)0x80,
             (byte)0x20};
+    private static final byte[] RESULTOFREG={(byte)0x80,
+            (byte)0x21};
+    private static final byte[] SERVERPUBKEYS={(byte)0x80,
+            (byte)0x11};
     EccOperations eccOperations = new EccOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
@@ -113,6 +120,7 @@ public class MyHostApduService extends HostApduService {
     }
     Bundle extras=null;
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public byte[] processCommandApdu(byte[] commandApdu, Bundle extras) {
 
@@ -133,6 +141,13 @@ public class MyHostApduService extends HostApduService {
             }
             Log.i(TAG, "APDU_SELECT triggered. Response: " + utils.bytesToHex(toGive));
             return toGive;
+        }
+        else if(utils.isCommand(SERVERPUBKEYS,commandApdu))
+        {
+            Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
+            op.SaveServerKeysFromCOM(commandApdu);
+            Log.i(TAG,"length is "+commandApdu.length);
+            return A_OKAY;
         }
         else if(utils.isCommand(REGISTER,commandApdu))
         {
@@ -168,9 +183,10 @@ public class MyHostApduService extends HostApduService {
             byte secLevel=commandApdu[2];
             Options.setByteSecLevel(secLevel);
             byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
-            byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,commandApdu.length-1);
+            byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
+            byte[] timestamp=Arrays.copyOfRange(commandApdu,Options.BYTELENGHT*2+5,commandApdu.length-1);
             try {
-                if(eccOperations.verifyServer(sv,ev,commandApdu))
+                if(eccOperations.verifyServer(sv,ev,commandApdu,timestamp))
                 {
                     Log.i(TAG,"It is super legit");
                     return eccOperations.generateProof2();
@@ -222,9 +238,10 @@ public class MyHostApduService extends HostApduService {
             Options.setByteSecLevel(secLevel);
             byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
             byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
+            byte[] timestamp=Arrays.copyOfRange(commandApdu,Options.BYTELENGHT*2+5,commandApdu.length-1);
             try {
 
-                if(eccOperations.verifyServer(sv,ev,commandApdu))
+                if(eccOperations.verifyServer(sv,ev,commandApdu,timestamp))
                 {
                     Log.i(TAG,"It is super legit");
                     serverLegit=true;
@@ -282,6 +299,17 @@ public class MyHostApduService extends HostApduService {
             else
                 res="NO";
             Log.i(TAG,"Result of Authentication is "+res);
+            SendToMainAcc("Result",res);
+            return A_OKAY;
+        }
+        else if(utils.isCommand(RESULTOFREG,commandApdu))
+        {
+            String res;
+            if (Byte.compare(commandApdu[2],(byte)0x00)==0)
+                res="RYES";
+            else
+                res="RNO";
+            Log.i(TAG,"Result of Registration is "+res);
             SendToMainAcc("Result",res);
             return A_OKAY;
         }
