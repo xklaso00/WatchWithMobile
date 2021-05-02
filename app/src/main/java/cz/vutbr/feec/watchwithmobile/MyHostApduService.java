@@ -63,8 +63,8 @@ public class MyHostApduService extends HostApduService {
         //op.SaveServerKey(new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16));
         op.LoadServerKey();
         op.LoadKey();
-        op.LoadID();
-        op.delIDForTest();
+        Options.LoadID();
+
         return START_NOT_STICKY;
     }
 
@@ -182,21 +182,22 @@ public class MyHostApduService extends HostApduService {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             byte secLevel=commandApdu[2];
             Options.setByteSecLevel(secLevel);
-            byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
-            byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
-            byte[] timestamp=Arrays.copyOfRange(commandApdu,Options.BYTELENGHT*2+5,commandApdu.length-1);
             try {
+                byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
+                byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
+                byte[] timestamp=Arrays.copyOfRange(commandApdu,Options.BYTELENGHT*2+5,commandApdu.length-1);
                 if(eccOperations.verifyServer(sv,ev,commandApdu,timestamp))
                 {
                     Log.i(TAG,"It is super legit");
                     return eccOperations.generateProof2();
-                     //eccOperations.generateProof2();
+                    //eccOperations.generateProof2();
                 }
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+            catch (Exception e) {
+                Log.i(TAG,"Exception in verify");
+                Log.i(TAG,e.getMessage());
+            }
+
             return UNKNOWN_CMD_SW;
         }
         else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Example.startedRegister)

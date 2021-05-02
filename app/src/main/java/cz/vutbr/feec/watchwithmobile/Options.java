@@ -23,7 +23,7 @@ public class Options {
     public static boolean isRegistered=false;
     public static byte[] MYID;
     public static int MaxAltDev=1;
-    private Context context;
+    private static Context context;
     public Options(Context context)
     {
         this.context=context;
@@ -36,11 +36,14 @@ public class Options {
 
     public static  void setSecurityLevel(int level)
     {
-        if (level>0&&level<3)
+        if (level>-1&&level<3)
         {
             SECURITY_LEVEL=level;
         }
         switch (SECURITY_LEVEL){
+            case 0:
+                BYTELENGHT=20;
+                break;
             case 1:
                 BYTELENGHT=28;
                 break;
@@ -62,6 +65,11 @@ public class Options {
             setSecurityLevel(2);
             Log.i(TAG,"security has been set to 2");
         }
+        else if(Byte.compare(secByte,(byte)0x00)==0)
+        {
+            setSecurityLevel(0);
+            Log.i(TAG,"security has been set to 0");
+        }
     }
     public void RegisterID(byte[] ID)
     {
@@ -71,7 +79,7 @@ public class Options {
         editor.commit();
         LoadID();
     }
-    public void delIDForTest()
+    public static void delIDForTest()
     {
         SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
@@ -111,7 +119,7 @@ public class Options {
 
 
     }
-    public byte[] LoadID()
+    public static byte[] LoadID()
     {
         try {
             SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);

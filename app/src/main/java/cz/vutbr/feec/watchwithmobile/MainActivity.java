@@ -3,7 +3,10 @@ package cz.vutbr.feec.watchwithmobile;
 
 
 //import android.support.v7.app.AppCompatActivity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
+import android.content.DialogInterface;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -42,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
     AnimatedVectorDrawable avd;
     ProgressBar APDUProgressImage;
     TextView introText;
-
+    Button optionsBttn;
 
     long allTimeStart;
     long allTimeEnd;
@@ -50,11 +53,13 @@ public class MainActivity extends AppCompatActivity {
     Button resetBttn;
     ImageView onWatch;
     ImageView offWatch;
+    Dialog optionsDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getSupportActionBar().hide();
+        optionsDialog=new Dialog(this);
         doneImage=findViewById(R.id.done);
         crossImage=findViewById(R.id.Cross);
         circleImage=findViewById(R.id.Circle);
@@ -65,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
         onWatch=findViewById(R.id.watchOnline);
         offWatch=findViewById(R.id.watchOfflie);
         APDUProgressImage=findViewById(R.id.APDUProgress);
+        optionsBttn=findViewById(R.id.optionsButton);
         IntentFilter messageFilter = new IntentFilter(Intent.ACTION_SEND);
         Receiver messageReceiver = new Receiver();
         HandlerThread handlerThread = new HandlerThread("htMA");
@@ -84,8 +90,9 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("sap", "starting service?");
 
-        resetBttn.setOnClickListener(new View.OnClickListener() {
 
+
+        resetBttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(Example.end==true)
@@ -95,11 +102,86 @@ public class MainActivity extends AppCompatActivity {
                 Example.Reset();
                 resetUI();
                 Toast.makeText(getApplicationContext(),"Communication has been restarted",Toast.LENGTH_LONG).show();
-
+            }
+        });
+        optionsBttn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                showOptions(v);
 
             }
         });
 
+    }
+    public void showOptions(View v) {
+        optionsDialog.setContentView(R.layout.popup);
+        ImageView closeThis;
+        closeThis=optionsDialog.findViewById(R.id.closeWindow);
+        Button deleteID;
+        deleteID=optionsDialog.findViewById(R.id.DelDataBttn);
+        final Button timeCheck;
+        timeCheck=optionsDialog.findViewById(R.id.DisableTimeBttn);
+        Button helpBttn=optionsDialog.findViewById(R.id.helpBttn);
+        if(Options.timeChecking==true)
+            timeCheck.setText("Disable TimeStamp Check");
+        else
+            timeCheck.setText("Enable TimeStamp Check");
+        timeCheck.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(Options.timeChecking==true){
+                    Options.enableTimeChecking(false);
+                    timeCheck.setText("Enable TimeStamp Check");
+                    Toast.makeText(getApplicationContext(),"Time stamp check disabled",Toast.LENGTH_LONG).show();
+                }
+                else{
+                    Options.enableTimeChecking(true);
+                    timeCheck.setText("Disable TimeStamp Check");
+                    Toast.makeText(getApplicationContext(),"Time stamp check enabled",Toast.LENGTH_LONG).show();
+                }
+
+            }
+        });
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setCancelable(true);
+        builder.setTitle("Are you sure?");
+        builder.setMessage("This will delete your registration data, you will be unable to login with this phone and will have to register again.");
+        builder.setPositiveButton("Confirm",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Options.delIDForTest();
+                        Toast.makeText(getApplicationContext(),"Registration data deleted",Toast.LENGTH_LONG).show();
+                    }
+                });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+            }
+        });
+
+        closeThis.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                optionsDialog.dismiss();
+            }
+        });
+        deleteID.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            }
+        });
+        helpBttn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                HelpDialog hd= new HelpDialog();
+                hd.show(getSupportFragmentManager(),"Help Dialog");
+            }
+        });
+        optionsDialog.show();
     }
     public void resetUI()
     {
