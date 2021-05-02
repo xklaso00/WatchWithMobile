@@ -157,6 +157,8 @@ public class MyHostApduService extends HostApduService {
             byte[]comToSend;
             try {
                 comToSend=eccOperations.registerDev(newID);
+                Options.setSecurityLevel(0);
+                op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey160()));
                 Options.setSecurityLevel(1);
                 op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey224()));
                 Options.setSecurityLevel(2);
@@ -189,7 +191,9 @@ public class MyHostApduService extends HostApduService {
                 if(eccOperations.verifyServer(sv,ev,commandApdu,timestamp))
                 {
                     Log.i(TAG,"It is super legit");
-                    return eccOperations.generateProof2();
+                    byte[] toGive=eccOperations.generateProof2();
+                    eccOperations.comuteInJavaProof();
+                    return toGive;
                     //eccOperations.generateProof2();
                 }
             }

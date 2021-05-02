@@ -123,7 +123,7 @@ public class utils {
                 return buf;
             }
         }
-        else
+        else if(Options.SECURITY_LEVEL==1)
         {
             if (b.length > 28)
             {
@@ -137,6 +137,20 @@ public class utils {
 
             return b;
         }
+        else
+        {
+            if (b.length > 20)
+            {
+                if (b[0] == 0)
+                {
+                    byte[] tmp = new byte[b.length - 1];
+                    System.arraycopy(b, 1, tmp, 0, tmp.length);
+                    b = tmp;
+                }
+            }
+            return b;
+        }
+
     }
     public static byte[] bytesFromBigInteger2(BigInteger n)
     {
@@ -236,6 +250,28 @@ public class utils {
         return  newByte;
 
     }
+    public static byte[] FixFromCBytesWithSec(byte[] toFix)
+    {
+        if(Options.SECURITY_LEVEL==2)
+        {
+            byte[] newByte = new byte[64];
+            byte[] x = Arrays.copyOfRange(toFix, 0, 32);
+            byte[] y = Arrays.copyOfRange(toFix, 32, toFix.length);
+            for (int i = 0; i < 32; i++) {
+                newByte[i] = x[31 - i];
+            }
+            for (int i = 0; i < 32; i++) {
+                newByte[i + 32] = y[31 - i];
+            }
+            return newByte;
+        }
+        else if(Options.SECURITY_LEVEL==1)
+        {
+            return FixFromC56(toFix);
+        }
+        else
+            return FixFrom40(toFix);
+    }
     public static  byte[]FixForC64(byte[] toFix)
     {
         if(toFix.length==64)
@@ -274,7 +310,46 @@ public class utils {
             }
             return  newByte;
         }
+        else if(toFix.length==40)
+        {
+            byte [] newByte= new byte[48];
+            byte [] x=Arrays.copyOfRange(toFix,0,20);
+            byte [] y= Arrays.copyOfRange(toFix,20,toFix.length);
+            for(int i=0;i<20;i++)
+            {
+                newByte[i]=x[19-i];
+            }
+            for (int i=0;i<4;i++)
+            {
+                newByte[i+20]=(byte)0x00;
+            }
+            for (int i=0;i<20;i++)
+            {
+                newByte[i+24]=y[19-i];
+            }
+            for (int i=0;i<4;i++)
+            {
+                newByte[i+44]=(byte)0x00;
+            }
+
+            return  newByte;
+        }
         return null;
+    }
+    public static byte[] FixFrom40(byte[] toFix)
+    {
+        byte [] newByte= new byte[40];
+        byte [] x=Arrays.copyOfRange(toFix,0,20);
+        byte [] y= Arrays.copyOfRange(toFix,24,toFix.length);
+        for(int i=0;i<20;i++)
+        {
+            newByte[i]=x[19-i];
+        }
+        for (int i=0;i<20;i++)
+        {
+            newByte[i+20]=y[19-i];
+        }
+        return  newByte;
     }
     public static byte[] FixForC32(byte[] toFix)
     {

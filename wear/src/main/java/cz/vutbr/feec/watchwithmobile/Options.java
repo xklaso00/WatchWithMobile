@@ -12,7 +12,8 @@ public class Options {
     private static BigInteger SecKey256;
     public static String TAG="Options";
     private static BigInteger SecKey224;
-
+    private static BigInteger SecKey160;
+    private static boolean keysLoaded=false;
     private Context context;
     public Options(Context context)
     {
@@ -20,13 +21,16 @@ public class Options {
     }
     public static  void setSecurityLevel(int level)
     {
-        if (level>0&&level<5)
+        if (level>-1&&level<53)
         {
             SECURITY_LEVEL=level;
         }
         switch (SECURITY_LEVEL){
             case 1:
                 BYTELENGHT=28;
+                break;
+            case 0:
+                BYTELENGHT=20;
                 break;
             default:
                 BYTELENGHT=32;
@@ -35,9 +39,14 @@ public class Options {
     }
     public void SaveKey(BigInteger privateKey)
     {
+        keysLoaded=false;
         SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.Watchkeys", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
         switch (SECURITY_LEVEL){
+            case 0:
+                editor.putString("key160",utils.bytesToHex(utils.bytesFromBigInteger(privateKey)));
+                editor.commit();
+                break;
             case 1:
                 editor.putString("key224",utils.bytesToHex(utils.bytesFromBigInteger(privateKey)));
                 editor.commit();
@@ -54,6 +63,9 @@ public class Options {
     public void LoadKey()
     {
         try {
+            if(keysLoaded)
+                return;
+            keysLoaded=true;
             SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.Watchkeys", Context.MODE_PRIVATE);
             String keyString;
             keyString = sharedPref.getString("key224", String.valueOf(0));
@@ -63,6 +75,10 @@ public class Options {
             keyString = sharedPref.getString("key256", String.valueOf(0));
             SecKey256 = new BigInteger(keyString, 16);
             Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
+            keyString = sharedPref.getString("key160", String.valueOf(0));
+            SecKey160 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key160 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey160)));
+            Log.i("APDU", "I loaded the key160 it is " + keyString);
         }
         catch ( Exception e)
         {
@@ -76,8 +92,14 @@ public class Options {
     {
         if(SECURITY_LEVEL==2)
             return SecKey256;
-        else
+        else if(SECURITY_LEVEL==1)
             return SecKey224;
+        else
+        {
+            Log.i(TAG,"GIVING KEY"+utils.bytesToHex(utils.bytesFromBigInteger(SecKey160)));
+            return SecKey160;
+        }
+
     }
     public static void setByteSecLevel(byte secByte)
     {
@@ -91,6 +113,20 @@ public class Options {
             setSecurityLevel(2);
             Log.i(TAG,"security has been set to 2");
         }
+        else if(secByte == (byte) 0x00)
+        {
+            setSecurityLevel(0);
+            Log.i(TAG,"security has been set to 0");
+        }
+    }
+    public static String getHashName()
+    {
+        if(SECURITY_LEVEL==2)
+            return "SHA-256";
+        else if(SECURITY_LEVEL==0)
+            return  "SHA-1";
+        else
+            return "SHA-224";
     }
 
 

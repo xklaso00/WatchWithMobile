@@ -102,7 +102,7 @@ public class utils {
                 return buf;
             }
         }
-        else
+        else if(Options.SECURITY_LEVEL==1)
         {
             if (b.length > 28) {
                 if (b[0] == 0)
@@ -113,6 +113,19 @@ public class utils {
                 }
             }
 
+            return b;
+        }
+        else
+        {
+            if (b.length > 20)
+            {
+                if (b[0] == 0)
+                {
+                    byte[] tmp = new byte[b.length - 1];
+                    System.arraycopy(b, 1, tmp, 0, tmp.length);
+                    b = tmp;
+                }
+            }
             return b;
         }
     }

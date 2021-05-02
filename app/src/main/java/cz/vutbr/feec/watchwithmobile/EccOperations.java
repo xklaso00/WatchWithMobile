@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import org.spongycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.io.ByteArrayOutputStream;
@@ -49,10 +50,11 @@ public class EccOperations {
     };*/
     private byte[] privateKey256;
     private byte[] privateKey224;
+    private byte[] privateKey160;
     BigInteger rand=null;
     byte[] Send=null;
     //ECCurve ellipticCurve= new ECCurve.Fp(prime,A,B);
-
+    byte[] CRand;
     //ECCurve ec2=
     BigInteger SecKey;
     ECPoint pubKey=null;
@@ -65,6 +67,7 @@ public class EccOperations {
     private byte [] TvPoint;
     private byte[] PubKey256;
     private byte[] PubKey224;
+    private byte[] PubKey160;
     CurvesSpecifics cs;
     public EccOperations() {
         cs= new CurvesSpecifics();
@@ -146,8 +149,11 @@ public class EccOperations {
         String curveName;
         if(Options.SECURITY_LEVEL==1)
             curveName="secp224r1";
-        else
+        else if(Options.SECURITY_LEVEL==2)
             curveName="secp256k1";
+        else
+            curveName="secp160r1";
+
         g.initialize(new ECGenParameterSpec(curveName), new SecureRandom());
         KeyPair aKeyPair = g.generateKeyPair();
         ECPrivateKey SecKeyA= (ECPrivateKey)aKeyPair.getPrivate();
@@ -164,12 +170,16 @@ public class EccOperations {
         Log.i("APDUKEY","private key is "+utils.bytesToHex(utils.bytesFromBigInteger(SKA)));
         if(Options.SECURITY_LEVEL==1)
             PubKey224=publicKeyA;
-        else
+        else if(Options.SECURITY_LEVEL==2)
             PubKey256=publicKeyA;
+        else
+            PubKey160=publicKeyA;
         return utils.bytesFromBigInteger(SKA);
     }
+
     byte[] verServerMessage;
     @RequiresApi(api = Build.VERSION_CODES.O)
+
     public boolean verifyServer(byte[] sv, byte [] ev, byte[] message, byte[] timeStamp) throws NoSuchAlgorithmException, IOException {
         long startTime = System.nanoTime();
         verServerMessage=message;
@@ -199,24 +209,25 @@ public class EccOperations {
         //else if(Options.SECURITY_LEVEL==2)
             byte[] pubCByte = PubServerEC.getEncoded(false);
             pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
-
+        Log.i("ECCOP", "I was here");
            /* Log.i("APDU", "sv is " + utils.bytesToHex(sv));
             Log.i("APDU", "ev is " + utils.bytesToHex(ev));
         Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
         Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
         Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));*/
-
-            byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
-
-            byte[] svgC=getPt1();
-           byte[] PubEv=getPt2();
+           byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+            Log.i("ECCOP","TVC is "+utils.bytesToHex(tvC));
+            //byte[] svgC=getPt1();
+            //byte[] PubEv=getPt2();
             //tvC=Arrays.copyOfRange(tvC,0,64);
-        Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svgC)));
-        Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(PubEv)));
+       // Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svgC)));
+       // Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(PubEv)));
             if(Options.SECURITY_LEVEL==1)
                 tvC=utils.FixFromC56(tvC);
-            else
+            else if(Options.SECURITY_LEVEL==2)
                 tvC=utils.FixForC64(tvC);
+            else
+                tvC=utils.FixFrom40(tvC);
             byte[] compTvC = getCompPointFromCord(tvC);
             TvPoint = compTvC;
 
@@ -258,12 +269,13 @@ public class EccOperations {
 
     public boolean compareHashesOfServer(byte [] ev, byte[] timeStamp) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = null;
-        String hashFunction;
+        String hashFunction=Options.getHashName();
 
-        if(Options.SECURITY_LEVEL==1)
+        /*if(Options.SECURITY_LEVEL==1)
             hashFunction="SHA-224";
         else
-            hashFunction="SHA-256";
+            hashFunction="SHA-256";*/
+
             digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         outputStream.write(Options.MYID);
@@ -283,26 +295,31 @@ public class EccOperations {
 
     public byte [] generateProof2() throws NoSuchAlgorithmException, IOException {
 
-        byte []t;
+        byte []t=randPoint2(Options.SECURITY_LEVEL);
+        Log.i("APDU"," T before fix is "+utils.bytesToHex(t));
         if(Options.SECURITY_LEVEL==1)
-            t=utils.FixFromC56(randPoint2());
+            t=utils.FixFromC56(t);
+        else if(Options.SECURITY_LEVEL==2)
+            t=utils.FixForC64(t);
         else
-            t=utils.FixForC64(randPoint2());
+            t=utils.FixFrom40(t);
+        Log.i("APDU"," T after fix is "+utils.bytesToHex(t));
         t=getCompPointFromCord(t);
         byte[] randNumber=utils.FixForC32(randReturn2(Options.SECURITY_LEVEL));
-
-        byte [] Tk=generateTk2(getCBytePointFromCompressedByte(TvPoint));
+        CRand=randNumber;
+        byte [] Tk=generateTk2(getCBytePointFromCompressedByte(TvPoint),Options.SECURITY_LEVEL);
+        Log.i("APDU"," Tk before fix is "+utils.bytesToHex(Tk));
         if(Options.SECURITY_LEVEL==1)
             Tk=utils.FixFromC56(Tk);
-        else
+        else if(Options.SECURITY_LEVEL==2)
             Tk=utils.FixForC64(Tk);
+        else
+            Tk=utils.FixFrom40(Tk);
+        Log.i("APDU"," T after fix is "+utils.bytesToHex(Tk));
         Tk=getCompPointFromCord(Tk);
 
-        String hashFunction;
-        if(Options.SECURITY_LEVEL==1)
-            hashFunction="SHA-224";
-        else
-            hashFunction="SHA-256";
+        String hashFunction=Options.getHashName();
+
         MessageDigest digest = null;
         digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
@@ -312,7 +329,8 @@ public class EccOperations {
         outputStream.write(verServerMessage);
         byte connectedBytes[] = outputStream.toByteArray( );
         byte [] hash = digest.digest(connectedBytes);
-        Log.i("APDU"," Sig is"+utils.bytesToHex(hash));
+        Log.i("APDU"," Hash is"+utils.bytesToHex(hash));
+
         outputStream.reset();
 
 
@@ -324,41 +342,45 @@ public class EccOperations {
         outputStream.write(signature);
         byte[] finalMSG=outputStream.toByteArray();
         outputStream.close();
+        Log.i("APDU"," Sig is"+utils.bytesToHex(signature));
         InicializeAES(Tk);
         return finalMSG;
     }
     byte[] hashForBoth;
     public byte[] GenerateProofWithWatch(byte[] Tk2, byte[] t1) throws NoSuchAlgorithmException, IOException {
 
-        byte []randPoint;
-        if(Options.SECURITY_LEVEL==1)
+        byte []randPoint=utils.FixFromCBytesWithSec(randPoint2(Options.SECURITY_LEVEL));
+        /*if(Options.SECURITY_LEVEL==1)
             randPoint=utils.FixFromC56(randPoint2());
         else
-            randPoint=utils.FixForC64(randPoint2());
+            randPoint=utils.FixForC64(randPoint2());*/
+
         randPoint=getCompPointFromCord(randPoint);
         byte[] randNumber=utils.FixForC32(randReturn2(Options.SECURITY_LEVEL));
 
-        byte [] t=generateTWithWatch2(getCBytePointFromCompressedByte(t1));
-        if(Options.SECURITY_LEVEL==1)
+        byte [] t=generateTWithWatch2(getCBytePointFromCompressedByte(t1),Options.SECURITY_LEVEL);
+        /*if(Options.SECURITY_LEVEL==1)
             t=utils.FixFromC56(t);
         else
-            t=utils.FixForC64(t);
+            t=utils.FixForC64(t);*/
+        t=utils.FixFromCBytesWithSec(t);
         t=getCompPointFromCord(t);
 
-        byte[] Tk=generateTkWithWatch2(getCBytePointFromCompressedByte(Tk2),getCBytePointFromCompressedByte(TvPoint));
-        if(Options.SECURITY_LEVEL==1)
+        byte[] Tk=generateTkWithWatch2(getCBytePointFromCompressedByte(Tk2),getCBytePointFromCompressedByte(TvPoint),Options.SECURITY_LEVEL);
+        /*if(Options.SECURITY_LEVEL==1)
             Tk=utils.FixFromC56(Tk);
         else
-            Tk=utils.FixForC64(Tk);
+            Tk=utils.FixForC64(Tk);*/
+        Tk=utils.FixFromCBytesWithSec(Tk);
         Tk=getCompPointFromCord(Tk);
         Log.i("APDU","Tk is"+utils.bytesToHex(Tk));
         Log.i("APDU","t is "+utils.bytesToHex(t));
         MessageDigest digest = null;
-        String hashFunction;
-        if(Options.SECURITY_LEVEL==1)
+        String hashFunction=Options.getHashName();
+       /* if(Options.SECURITY_LEVEL==1)
             hashFunction="SHA-224";
         else
-            hashFunction="SHA-256";
+            hashFunction="SHA-256";*/
         digest = MessageDigest.getInstance(hashFunction);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
@@ -413,16 +435,31 @@ public class EccOperations {
         return getCompPointFromCord(point);
     }
     public void InicializeAES(byte[] Tk) throws NoSuchAlgorithmException {
-        MessageDigest digest = null;
-        digest = MessageDigest.getInstance("SHA-256");
-        byte [] hash = digest.digest(Tk);
-        byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,hash.length/2);
-        AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");
+        if(Options.SECURITY_LEVEL==1||Options.SECURITY_LEVEL==2)
+        {
+            MessageDigest digest = null;
+            digest = MessageDigest.getInstance("SHA-256");
+            byte [] hash = digest.digest(Tk);
+            byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,hash.length/2);
+            AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");
         /*byte [] SecretKeyBytes= Arrays.copyOfRange(Tk,1,Tk.length);
         AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "AES");*/
-        lastAESIV= new byte[12];
-        SecureRandom random = new SecureRandom();
-        random.nextBytes(lastAESIV);
+            lastAESIV= new byte[12];
+            SecureRandom random = new SecureRandom();
+            random.nextBytes(lastAESIV);
+        }
+        else
+        {
+            MessageDigest digest = null;
+            digest = MessageDigest.getInstance("SHA-256");
+            byte [] hash = digest.digest(Tk);
+            byte [] SecretKeyBytes= Arrays.copyOfRange(hash,0,24);
+            AESKey= new SecretKeySpec(SecretKeyBytes, 0, SecretKeyBytes.length, "DESede");
+            lastAESIV= new byte[8];
+            SecureRandom random = new SecureRandom();
+            random.nextBytes(lastAESIV);
+        }
+
     }
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public byte[] generateSecretAPDUMessage(byte[] msg) throws Exception {
@@ -437,18 +474,31 @@ public class EccOperations {
     }
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public byte[] decodeAESCommand(byte [] command) throws Exception {
-        byte[] IV= Arrays.copyOfRange(command,5,17);
-        byte[] AESed= Arrays.copyOfRange(command,17,command.length-1);
-        byte[] decrypted= AESGCMClass.decrypt(AESed,AESKey,IV);
-        return decrypted;
+        if(Options.SECURITY_LEVEL==1||Options.SECURITY_LEVEL==2) {
+            byte[] IV= Arrays.copyOfRange(command,5,17);
+            byte[] AESed= Arrays.copyOfRange(command,17,command.length-1);
+            byte[] decrypted= AESGCMClass.decrypt(AESed,AESKey,IV);
+            return decrypted;
+        }
+        else
+        {
+            byte[] IV= Arrays.copyOfRange(command,5,13);
+            byte[] AESed= Arrays.copyOfRange(command,13,command.length-1);
+            byte[] decrypted= DESClass.decrypt(AESed,AESKey,IV);
+            return decrypted;
+        }
+
     }
     public byte[] registerDev(byte []ID) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException {
         Options.setSecurityLevel(2);
         privateKey256=genertateSecKey();
         Options.setSecurityLevel(1);
         privateKey224=genertateSecKey();
+        Options.setSecurityLevel(0);
+        privateKey160=genertateSecKey();
         byte[] bothKeys=utils.appendByteArray(PubKey256,PubKey224);
-        return bothKeys;
+        byte[] allKeys= utils.appendByteArray(bothKeys,PubKey160);
+        return allKeys;
     }
     @RequiresApi(api = Build.VERSION_CODES.O)
     public static byte[] GenerateTimeStamp()
@@ -467,15 +517,60 @@ public class EccOperations {
     {
         return privateKey224;
     }
+    public byte[] getPrivateKey160()
+    {
+        return privateKey160;
+    }
+
+   public byte[] comuteInJavaProof() throws NoSuchAlgorithmException, IOException {
+       ECPoint tpt=cs.getG().multiply(new BigInteger(1,CRand));
+       byte []t= tpt.getEncoded(true);
+       Log.i("APDU"," T JAVA"+utils.bytesToHex(t));
+       ECPoint TkPt=cs.getCurve().decodePoint(TvPoint).multiply(new BigInteger(1,CRand));
+
+       byte [] Tk=TkPt.getEncoded(true);
+
+
+       Log.i("APDU"," Tk JAVA "+utils.bytesToHex(Tk));
+
+
+       String hashFunction=Options.getHashName();
+
+       MessageDigest digest = null;
+       digest = MessageDigest.getInstance(hashFunction);
+       ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+       outputStream.write(Options.MYID);
+       outputStream.write(t);
+       outputStream.write(Tk);
+       outputStream.write(verServerMessage);
+       byte connectedBytes[] = outputStream.toByteArray( );
+       byte [] hash = digest.digest(connectedBytes);
+       Log.i("APDU"," Hash JAVA is"+utils.bytesToHex(hash));
+
+       outputStream.reset();
+
+
+       BigInteger mid= ((new BigInteger(1,hash)).multiply(Options.getPrivateKey())).mod(cs.getN());
+       BigInteger sv = ((new BigInteger(1,CRand)).subtract(mid)).mod(cs.getN());
+       byte [] signature= utils.bytesFromBigInteger(sv);
+       outputStream.write(Options.MYID);
+       outputStream.write(hash);
+       outputStream.write(signature);
+       byte[] finalMSG=outputStream.toByteArray();
+       outputStream.close();
+       Log.i("APDU"," Sig JAVA is"+utils.bytesToHex(signature));
+       InicializeAES(Tk);
+       return finalMSG;
+   }
 
 
     public native byte[] verSignServer2(byte[] sv, byte [] pub, byte [] ev, int SecLevel);
     
-    public native byte[] randPoint2();
+    public native byte[] randPoint2(int SecLevel);
     public native byte[] randReturn2(int SevLevel);
-    public native byte[] generateTk2(byte[] tv);
-    public native byte[] generateTWithWatch2(byte[] t1);
-    public native byte[] generateTkWithWatch2(byte[] tk2,byte[] tv);
+    public native byte[] generateTk2(byte[] tv, int SecLevel);
+    public native byte[] generateTWithWatch2(byte[] t1, int SecLevel);
+    public native byte[] generateTkWithWatch2(byte[] tk2,byte[] tv,int SecLevel);
     public native byte[] getPt1();
     public native byte[] getPt2();
     public byte[] getTvPoint() {

@@ -25,6 +25,8 @@ public class EccOperations {
     public byte[] PubKey256;
     private byte[] privateKey256;
     private byte[] privateKey224;
+    private byte []privateKey160;
+    public byte[] PubKey160;
     BigInteger prime = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007908834671663");
     //final static private BigInteger n = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
     BigInteger A = new BigInteger("0");
@@ -99,9 +101,19 @@ public class EccOperations {
     {
         BigInteger Px= utils.getXCord(cords);
         BigInteger Py= utils.getYCord(cords);
+        try {
+        cs.getCurve().validatePoint(Px, Py);
+
+         }
+        catch ( Exception e)
+        {
+            Log.i("APDU","EROOR point "+utils.bytesToHex(cords));
+        }
         ECPoint ecPoint=cs.getCurve().createPoint(Px,Py);
         byte [] comPoint = ecPoint.getEncoded(true);
         return comPoint;
+
+
     }
     public byte[] createT1()
     {
@@ -114,7 +126,7 @@ public class EccOperations {
        // return t1;
         byte [] T1=randPointWatch(Options.SECURITY_LEVEL);
         Log.i("watch","T1 form C before fix is "+utils.bytesToHex(T1));
-        if(Options.SECURITY_LEVEL==1)
+        if(Options.SECURITY_LEVEL==1|| Options.SECURITY_LEVEL==0)
             T1=utils.ReverseOnly(T1);
         else
             T1=utils.FixForC64(T1);
@@ -134,9 +146,9 @@ public class EccOperations {
         byte[] TVforC= Arrays.copyOfRange(TVLong,1,TVLong.length);
         Log.i("watch","TV for C is "+utils.bytesToHex(utils.ReverseOnly(TVforC)));
         TVforC=utils.ReverseOnly(TVforC);
-        byte[] Tk2=CforTk2Watch(TVforC);
+        byte[] Tk2=CforTk2Watch(TVforC,Options.SECURITY_LEVEL);
         Log.i("watch","tk2 from C is "+utils.bytesToHex(utils.ReverseOnly(Tk2)));
-        if(Options.SECURITY_LEVEL==1)
+        if(Options.SECURITY_LEVEL==1|| Options.SECURITY_LEVEL==0)
             Tk2=utils.ReverseOnly(Tk2);
         else
             Tk2=utils.FixForC64(Tk2);
@@ -154,8 +166,10 @@ public class EccOperations {
         String curveName;
         if(Options.SECURITY_LEVEL==1)
             curveName="secp224r1";
-        else
+        else if (Options.SECURITY_LEVEL==2)
             curveName="secp256k1";
+        else
+            curveName="secp160r1";
         g.initialize(new ECGenParameterSpec(curveName), new SecureRandom());
         KeyPair aKeyPair = g.generateKeyPair();
         ECPrivateKey SecKeyA= (ECPrivateKey)aKeyPair.getPrivate();
@@ -182,24 +196,35 @@ public class EccOperations {
         privateKey256=genertateSecKeyJava();
         Options.setSecurityLevel(1);
         privateKey224=genertateSecKeyJava();*/
+       privateKey160=GenerateSecKey(0);
        privateKey224=GenerateSecKey(1);
        privateKey256=GenerateSecKey(2);
        privateKey224=utils.FixForC32(privateKey224);
        privateKey256=utils.FixForC32(privateKey256);
+       privateKey160=utils.FixForC32(privateKey160);
        PubKey256=GetPubKey(2);
        PubKey224=GetPubKey(1);
+       PubKey160=GetPubKey(0);
+
        Options.setSecurityLevel(2);
        PubKey256=getCompPointFromCord(utils.FixForC64(PubKey256));
        Options.setSecurityLevel(1);
        PubKey224=getCompPointFromCord(utils.ReverseOnly(PubKey224));
+       Options.setSecurityLevel(0);
+       PubKey160=getCompPointFromCord(utils.ReverseOnly(PubKey160));
+
        Log.i("watchKey","256 pub is "+utils.bytesToHex(PubKey256));
         Log.i("watchKey","224 pub is "+utils.bytesToHex(PubKey224));
+        Log.i("watchKey","160 pub is "+utils.bytesToHex(PubKey160));
+
+
 
 
 
         Log.i("WatchGen","Generating keys took in C "+(System.nanoTime()-startTimer)/1000000+"ms");
         byte[] bothKeys=utils.appendByteArray(PubKey256,PubKey224);
-        return bothKeys;
+        byte[] allKeys= utils.appendByteArray(bothKeys,PubKey160);
+        return allKeys;
     }
     public byte[] getPrivateKey256()
     {
@@ -209,10 +234,10 @@ public class EccOperations {
     {
         return privateKey224;
     }
-
+    public byte[] getPrivateKey160(){return privateKey160;}
     public native byte[] randPointWatch(int SecLevel);
     public native byte [] randReturnWatch(int SecLevel);
-    public native byte [] CforTk2Watch(byte[] Tv);
+    public native byte [] CforTk2Watch(byte[] Tv,int SecLevel);
     public native byte[] GenerateSecKey(int SecLevel);
     public native byte[] GetPubKey(int SecLevel);
 

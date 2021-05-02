@@ -17,6 +17,8 @@ public class Options {
     public static int SECURITY_LEVEL=2;
     public static int BYTELENGHT=32;
     private static BigInteger SecKey256;
+    private static BigInteger ServerPubKey160;
+    private static BigInteger SecKey160;
     private static BigInteger ServerPubKey256;
     private static BigInteger SecKey224;
     private static BigInteger ServerPubKey224;
@@ -90,12 +92,15 @@ public class Options {
     public void SaveServerKeysFromCOM(byte[] commandApdu)
     {
         byte[] Pub32= Arrays.copyOfRange(commandApdu,5,38);
-        byte[] Pub28=Arrays.copyOfRange(commandApdu,38,commandApdu.length-1);
+        byte[] Pub28=Arrays.copyOfRange(commandApdu,38,67);
+        byte[] Pub20=Arrays.copyOfRange(commandApdu,67,commandApdu.length-1);
         int oldSec=SECURITY_LEVEL;
         setSecurityLevel(2);
         SaveServerKey(new BigInteger(1,Pub32));
         setSecurityLevel(1);
         SaveServerKey(new BigInteger(1,Pub28));
+        setSecurityLevel(0);
+        SaveServerKey(new BigInteger(1,Pub20));
         setSecurityLevel(oldSec);
         Log.i(TAG,"Server Keys saved from command");
         LoadServerKey();
@@ -105,6 +110,10 @@ public class Options {
         SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.keys", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
         switch (SECURITY_LEVEL){
+            case 0:
+                editor.putString("key160",utils.bytesToHex(utils.bytesFromBigInteger(privateKey)));
+                editor.commit();
+                break;
             case 1:
                 editor.putString("key224",utils.bytesToHex(utils.bytesFromBigInteger(privateKey)));
                 editor.commit();
@@ -156,6 +165,10 @@ public class Options {
             keyString = sharedPref.getString("key256", String.valueOf(0));
             SecKey256 = new BigInteger(keyString, 16);
             Log.i("APDU", "I loaded the key256 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey256)));
+
+            keyString = sharedPref.getString("key160", String.valueOf(0));
+            SecKey160 = new BigInteger(keyString, 16);
+            Log.i("APDU", "I loaded the key160 it is " + utils.bytesToHex(utils.bytesFromBigInteger(SecKey160)));
             //isRegistered=true;
         }
        catch (Exception e)
@@ -172,6 +185,10 @@ public class Options {
         SharedPreferences sharedPref = context.getSharedPreferences("cz.vutbr.feec.watchwithmobile.serverKeys", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
         switch (SECURITY_LEVEL){
+            case 0:
+                editor.putString("serverKey160",utils.bytesToHex(publicServerKey.toByteArray()));
+                editor.commit();
+                break;
             case 1:
                 editor.putString("serverKey224",utils.bytesToHex(publicServerKey.toByteArray()));
                 editor.commit();
@@ -198,6 +215,9 @@ public class Options {
                 ServerPubKey256 = new BigInteger(keyString, 16);
                 Log.i("APDU", "I loaded the public key256 it is " + utils.bytesToHex(ServerPubKey256.toByteArray()));
               //  break;
+        keyString = sharedPref.getString("serverKey160", String.valueOf(0));
+        ServerPubKey160 = new BigInteger(keyString, 16);
+        Log.i("APDU", "I loaded the public key160 it is " + utils.bytesToHex(ServerPubKey160.toByteArray()));
 
        // }
     }
@@ -205,6 +225,8 @@ public class Options {
     {
         if(SECURITY_LEVEL==2)
             return SecKey256;
+        else if(SECURITY_LEVEL==0)
+            return  SecKey160;
         else
             return SecKey224;
     }
@@ -212,7 +234,18 @@ public class Options {
     {
         if(SECURITY_LEVEL==2)
             return ServerPubKey256;
+        else if(SECURITY_LEVEL==0)
+            return  ServerPubKey160;
         else
             return ServerPubKey224;
+    }
+    public static String getHashName()
+    {
+        if(SECURITY_LEVEL==2)
+            return "SHA-256";
+        else if(SECURITY_LEVEL==0)
+            return  "SHA-1";
+        else
+            return "SHA-224";
     }
 }

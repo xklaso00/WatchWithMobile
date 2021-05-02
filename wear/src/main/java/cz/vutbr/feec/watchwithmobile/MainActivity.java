@@ -179,6 +179,8 @@ public class MainActivity extends WearableActivity {
                 try {
                     regdone=true;
                     byte[] keys=eccOperations.registerDev();
+                    Options.setSecurityLevel(0);
+                    op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey160()));
                     Options.setSecurityLevel(1);
                     op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey224()));
                     Options.setSecurityLevel(2);

@@ -20,15 +20,23 @@ public class CurvesSpecifics {
     BigInteger Gx256= new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
     BigInteger Gy256= new BigInteger("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16);
     ECPoint G256 = curve256.createPoint(Gx256,Gy256);
+
+    ECParameterSpec ecSpec160 = ECNamedCurveTable.getParameterSpec("secp160r1");
+    ECCurve curve160=ecSpec160.getCurve();
+    BigInteger Gx160= new BigInteger("4A96B5688EF573284664698968C38BB913CBFC82", 16);
+    BigInteger Gy160= new BigInteger("23A628553168947D59DCC912042351377AC5FB32", 16);
+    ECPoint G160 = curve160.createPoint(Gx160,Gy160);
+
     public ECCurve getCurve()
     {
         switch (Options.SECURITY_LEVEL) {
             case 1:
                 return curve224;
+
             case 2:
                 return curve256;
             default:
-                return  curve256;
+                return  curve160;
         }
     }
     public ECPoint getG()
@@ -40,7 +48,7 @@ public class CurvesSpecifics {
             case 2:
                 return G256;
             default:
-                return  G256;
+                return  G160;
         }
     }
     public BigInteger getN()
@@ -52,7 +60,7 @@ public class CurvesSpecifics {
             case 2:
                 return curve256.getOrder();
             default:
-                return  curve256.getOrder();
+                return  curve160.getOrder();
         }
     }
 }
