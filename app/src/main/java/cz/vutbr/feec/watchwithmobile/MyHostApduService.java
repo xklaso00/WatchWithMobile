@@ -68,7 +68,7 @@ public class MyHostApduService extends HostApduService {
         return START_NOT_STICKY;
     }
 
-
+    long T2time;
     long Start1;
     long StartBlockWithWatch;
     long startApdu;
@@ -192,7 +192,7 @@ public class MyHostApduService extends HostApduService {
                 {
                     Log.i(TAG,"It is super legit");
                     byte[] toGive=eccOperations.generateProof2();
-                    eccOperations.comuteInJavaProof();
+                    //eccOperations.comuteInJavaProof();
                     return toGive;
                     //eccOperations.generateProof2();
                 }
@@ -236,6 +236,8 @@ public class MyHostApduService extends HostApduService {
         }
         else if (utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(!m1sent))
         {
+            long T3time=System.nanoTime();
+            T2time=System.nanoTime();
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             Log.i("Timer","To get second apdu it took "+(System.nanoTime()-startApdu)/1000000+" ms");
             StartBlockWithWatch=System.nanoTime();
@@ -255,6 +257,7 @@ public class MyHostApduService extends HostApduService {
                     if(m1sent==false) {
                         m1sent=true;
                         Start1=System.nanoTime();
+                        Log.i("TTimer","T3 time is  "+(System.nanoTime()-T3time)/1000000+" ms");
                         new SendMessage("/path1", TvWithSec).start();
                     }
                     m1sent=true;
@@ -286,6 +289,7 @@ public class MyHostApduService extends HostApduService {
                 byte[] FullMsg=outputStream.toByteArray();
                 outputStream.close();
                 Log.i("Timer","To sending last response it took "+(System.nanoTime()-StartBlockWithWatch)/1000000+" ms");
+                Log.i("TTimer","T2 time is "+(System.nanoTime()-T2time)/1000000+" ms");
                 Log.i(TAG,"FullMSG is "+utils.bytesToHex(FullMsg));
                 return FullMsg;
             }

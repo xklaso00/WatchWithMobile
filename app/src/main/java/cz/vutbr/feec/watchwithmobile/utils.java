@@ -336,6 +336,19 @@ public class utils {
         }
         return null;
     }
+    public static byte[] PadWithZeros(byte[] toFix)
+    {
+        byte [] newByte= new byte[toFix.length*2];
+        for(int i=0;i<toFix.length;i++)
+        {
+            newByte[i]=toFix[i];
+        }
+        for(int i=toFix.length;i<toFix.length*2;i++)
+        {
+            newByte[i]=(byte)0x00;;
+        }
+        return newByte;
+    }
     public static byte[] FixFrom40(byte[] toFix)
     {
         byte [] newByte= new byte[40];

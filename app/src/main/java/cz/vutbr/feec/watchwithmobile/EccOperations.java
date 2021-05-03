@@ -209,19 +209,26 @@ public class EccOperations {
         //else if(Options.SECURITY_LEVEL==2)
             byte[] pubCByte = PubServerEC.getEncoded(false);
             pubCByte = Arrays.copyOfRange(pubCByte, 1, pubCByte.length);//this is important, ECPoints first byte is not cord uncompressed is 65bytes, we need 64
-        Log.i("ECCOP", "I was here");
-           /* Log.i("APDU", "sv is " + utils.bytesToHex(sv));
+/*
+            Log.i("APDU", "sv is " + utils.bytesToHex(sv));
             Log.i("APDU", "ev is " + utils.bytesToHex(ev));
         Log.i("APDU", "fixed sv is " + utils.bytesToHex(utils.FixForC32(sv)));
         Log.i("APDU", "fixed ev is " + utils.bytesToHex(utils.FixForC32(ev)));
         Log.i("APDU", "publickey fixed is " + utils.bytesToHex(utils.FixForC64(pubCByte)));*/
-           byte[] tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+        byte[] tvC;
+        if(Options.SECURITY_LEVEL==2)
+            tvC= verSignServer2(utils.FixForC32(sv),utils.FixForC64(pubCByte),utils.FixForC32(ev),Options.SECURITY_LEVEL);
+        else
+            tvC= verSignServer2(utils.PadWithZeros(utils.FixForC32(sv)),utils.FixForC64(pubCByte),utils.PadWithZeros(utils.FixForC32(ev)),Options.SECURITY_LEVEL);
+
+        long duration2 = System.nanoTime() - startTime2;
+        Log.i("Timer", "Ver in C took " + duration2 / 1000000 + " ms");
             Log.i("ECCOP","TVC is "+utils.bytesToHex(tvC));
-            //byte[] svgC=getPt1();
+           // byte[] svgC=getPt1();
             //byte[] PubEv=getPt2();
             //tvC=Arrays.copyOfRange(tvC,0,64);
-       // Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromC56(svgC)));
-       // Log.i("APDU","PubEv in C is "+utils.bytesToHex(utils.FixFromC56(PubEv)));
+        //Log.i("APDU","SVG in C is "+utils.bytesToHex(utils.FixFromCBytesWithSec(svgC)));
+        //Log.i("APDU","Pub in C is "+utils.bytesToHex(utils.FixFromCBytesWithSec(PubEv)));
             if(Options.SECURITY_LEVEL==1)
                 tvC=utils.FixFromC56(tvC);
             else if(Options.SECURITY_LEVEL==2)
@@ -236,8 +243,8 @@ public class EccOperations {
             //end of C implementation
 
             boolean isItLegit=compareHashesOfServer(ev,timeStamp);
-        long duration2 = System.nanoTime() - startTime2;
-        Log.i("Timer", "Ver in C took " + duration2 / 1000000 + " ms");
+        duration2 = System.nanoTime() - startTime2;
+        Log.i("Timer", "with hashes Ver in C took " + duration2 / 1000000 + " ms");
             if(isItLegit)
                 return true;
             computeVerInJava(sv,ev);

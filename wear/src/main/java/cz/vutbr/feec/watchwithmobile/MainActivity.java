@@ -34,6 +34,7 @@ public class MainActivity extends WearableActivity {
     static {
         System.loadLibrary("native-lib");
     }
+    long T4;
     utils utils= new utils();
     EccOperations eccOperations;
     private TextView textView;
@@ -110,7 +111,7 @@ public class MainActivity extends WearableActivity {
                     return;
                 GlobalBooleans.firstComDone=true;
                 allStart=System.nanoTime();
-
+                T4=System.nanoTime();
                 byte [] Tv= intent.getByteArrayExtra("data");
                 byte SecurityByte=intent.getByteExtra("Security", (byte) 0x02);
                 Options.setByteSecLevel(SecurityByte);
@@ -155,6 +156,7 @@ public class MainActivity extends WearableActivity {
                 Log.i(TAG,"Signature has been sent.");
                 allEnd=System.nanoTime();
                 Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
+                Log.i("TTIMER","T4 is "+(allEnd-T4)/1000000+" ms");
                 textView.setText("Communication ended. "+second);
                 return;
             }
