@@ -6,6 +6,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/backgroudwatch"
     tools:context=".MainActivity"
     tools:deviceIds="wear">
 
@@ -20,12 +21,15 @@
             android:id="@+id/talkClick"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/custom_button2"
             android:text="Reset Communication" />
 
         <TextView
             android:id="@+id/text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textColor="#555555"
+
             />
     </LinearLayout>
 </androidx.wear.widget.BoxInsetLayout>

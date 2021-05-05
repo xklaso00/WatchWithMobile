@@ -54,13 +54,16 @@ public class MainActivity extends AppCompatActivity {
     ImageView onWatch;
     ImageView offWatch;
     Dialog optionsDialog;
+    TextView IDtxt;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getSupportActionBar().hide();
         optionsDialog=new Dialog(this);
         doneImage=findViewById(R.id.done);
+        IDtxt=findViewById(R.id.IDtext);
         crossImage=findViewById(R.id.Cross);
         circleImage=findViewById(R.id.Circle);
         crossCircle=findViewById(R.id.circleIMg);
@@ -89,7 +92,6 @@ public class MainActivity extends AppCompatActivity {
         startService(intent); //start MyHostApduService
 
         Log.i("sap", "starting service?");
-
 
 
         resetBttn.setOnClickListener(new View.OnClickListener() {
@@ -152,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Options.delIDForTest();
+                        IDtxt.setText("");
                         Toast.makeText(getApplicationContext(),"Registration data deleted",Toast.LENGTH_LONG).show();
                     }
                 });
@@ -192,6 +195,8 @@ public class MainActivity extends AppCompatActivity {
         ProgressTextView.setText("");
         APDUProgressImage.setVisibility(View.INVISIBLE);
         introText.setVisibility(View.VISIBLE);
+        Example.startedRegister=false;
+        Example.gotRegister=false;
     }
     public void reWatchConnection()
     {
@@ -248,6 +253,10 @@ public class MainActivity extends AppCompatActivity {
                     });
 
                 }
+            }
+            else if(intent.getStringExtra("path").equals("IDUpdate")){
+                if(Options.isRegistered)
+                    IDtxt.setText("ID: "+utils.bytesToHex(Options.MYID));
             }
             else if(intent.getStringExtra("path").equals("Result"))
             {

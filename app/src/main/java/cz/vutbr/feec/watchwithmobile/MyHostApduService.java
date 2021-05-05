@@ -64,6 +64,7 @@ public class MyHostApduService extends HostApduService {
         op.LoadServerKey();
         op.LoadKey();
         Options.LoadID();
+        SendToMainAcc("IDUpdate","id");
 
         return START_NOT_STICKY;
     }
@@ -165,6 +166,7 @@ public class MyHostApduService extends HostApduService {
                 op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey256()));
                 byte[] loadedID=op.LoadID();
                 Log.i(TAG,"id is "+utils.bytesToHex(loadedID));
+                SendToMainAcc("IDUpdate","id");
                 return comToSend;
 
             } catch (InvalidAlgorithmParameterException e) {
@@ -206,6 +208,8 @@ public class MyHostApduService extends HostApduService {
         }
         else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Example.startedRegister)
         {
+            Log.i(TAG,"I got command "+utils.bytesToHex(commandApdu));
+            Log.i(TAG,"I got Start register of Watch ");
             if(Byte.compare(commandApdu[2],utils.intToHexByte(Options.MaxAltDev))>=1)
                 return UNKNOWN_CMD_SW;
             //here you could implement different code for different devices, since we have Index of device in commapdu[2]
@@ -218,8 +222,10 @@ public class MyHostApduService extends HostApduService {
         {
             if(!Example.gotRegister)
                 return NOTYET;
-            else
+            else {
+                Example.startedRegister=false;
                 return keysFromWatch;
+            }
         }
         else if (utils.isCommand(AESTESTCOM,commandApdu))
         {

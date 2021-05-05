@@ -57,6 +57,7 @@ public class MainActivity extends WearableActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setAmbientEnabled();
         setContentView(R.layout.activity_main);
         textView =  findViewById(R.id.text);
         talkButton =  findViewById(R.id.talkClick);
@@ -176,9 +177,11 @@ public class MainActivity extends WearableActivity {
             }
             else if(intent.getStringExtra("path").equals("pathRegister"))
             {
+
                 if(regdone)
                     return;
                 try {
+                    Log.i(TAG,"Working on register");
                     regdone=true;
                     byte[] keys=eccOperations.registerDev();
                     Options.setSecurityLevel(0);

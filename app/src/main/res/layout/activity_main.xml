@@ -199,6 +199,18 @@
             app:layout_constraintTop_toBottomOf="@+id/circleIMg"
             app:layout_constraintVertical_bias="0.0" />
 
+        <TextView
+            android:id="@+id/IDtext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#270F97"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.762"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/optionsButton"
+            app:layout_constraintVertical_bias="0.473" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
