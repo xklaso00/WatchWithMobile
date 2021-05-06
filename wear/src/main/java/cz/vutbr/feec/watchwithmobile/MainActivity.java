@@ -178,11 +178,11 @@ public class MainActivity extends WearableActivity {
             else if(intent.getStringExtra("path").equals("pathRegister"))
             {
 
-                if(regdone)
+                if(GlobalBooleans.RegisteringDone)
                     return;
                 try {
                     Log.i(TAG,"Working on register");
-                    regdone=true;
+                    GlobalBooleans.RegisteringDone=true;
                     byte[] keys=eccOperations.registerDev();
                     Options.setSecurityLevel(0);
                     op.SaveKey(new BigInteger(1,eccOperations.getPrivateKey160()));

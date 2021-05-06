@@ -191,6 +191,8 @@ public class EccOperations {
         return utils.bytesFromBigInteger(SKA);
     }
     public byte[] registerDev() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException {
+
+
         long startTimer=System.nanoTime();
        /* Options.setSecurityLevel(2);
         privateKey256=genertateSecKeyJava();

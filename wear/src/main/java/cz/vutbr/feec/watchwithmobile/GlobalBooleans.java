@@ -4,5 +4,6 @@ public class GlobalBooleans
 {
     public static boolean firstComDone=false;
     public static boolean secondComDone=false;
+    public static boolean RegisteringDone=false;
 
 }
