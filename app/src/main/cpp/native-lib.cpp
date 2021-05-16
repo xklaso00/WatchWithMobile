@@ -523,3 +523,5 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_getCPUBSV(JNIEnv *env, jobject 
     env->SetByteArrayRegion(newArray,0,64,point2);
     return newArray;
 }
+
+

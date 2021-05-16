@@ -88,6 +88,7 @@ public class MainActivity extends WearableActivity {
         regdone=false;
         GlobalBooleans.firstComDone=false;
         GlobalBooleans.secondComDone=false;
+        GlobalBooleans.RegisteringDone=false;
         textView.setText("Communication has been reseted!");
     }
 

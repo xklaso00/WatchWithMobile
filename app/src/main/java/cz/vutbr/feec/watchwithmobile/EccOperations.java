@@ -178,11 +178,13 @@ public class EccOperations {
     }
 
     byte[] verServerMessage;
+    byte[] serverTimeStamp;
     @RequiresApi(api = Build.VERSION_CODES.O)
 
     public boolean verifyServer(byte[] sv, byte [] ev, byte[] message, byte[] timeStamp) throws NoSuchAlgorithmException, IOException {
         long startTime = System.nanoTime();
         verServerMessage=message;
+        serverTimeStamp=timeStamp;
         byte[] ourTime=GenerateTimeStamp();
         if(Options.timeChecking) {
             if (utils.isEqual(timeStamp, ourTime))
@@ -331,12 +333,15 @@ public class EccOperations {
         digest = MessageDigest.getInstance(hashFunction);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         outputStream.write(Options.MYID);
+        outputStream.write(utils.bytesFromBigInteger(cs.getN()));
+        outputStream.write(serverTimeStamp);
         outputStream.write(t);
         outputStream.write(Tk);
-        outputStream.write(verServerMessage);
+        //outputStream.write(verServerMessage);
         byte connectedBytes[] = outputStream.toByteArray( );
         byte [] hash = digest.digest(connectedBytes);
-        Log.i("APDU"," Hash is"+utils.bytesToHex(hash));
+        Log.i("ECCOP", "Hash is"+utils.bytesToHex(hash));
+
 
         outputStream.reset();
 
@@ -392,9 +397,11 @@ public class EccOperations {
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         outputStream.write(Options.MYID);
+        outputStream.write(utils.bytesFromBigInteger(cs.getN()));
+        outputStream.write(serverTimeStamp);
         outputStream.write(t);
         outputStream.write(Tk);
-        outputStream.write(verServerMessage);
+        //outputStream.write(verServerMessage);
         byte connectedBytes[] = outputStream.toByteArray( );
         hashForBoth = digest.digest(connectedBytes);
         Log.i("APDU","Hash for both is "+utils.bytesToHex(hashForBoth));
@@ -580,6 +587,7 @@ public class EccOperations {
     public native byte[] generateTkWithWatch2(byte[] tk2,byte[] tv,int SecLevel);
     public native byte[] getPt1();
     public native byte[] getPt2();
+
     public byte[] getTvPoint() {
         return TvPoint;
     }
