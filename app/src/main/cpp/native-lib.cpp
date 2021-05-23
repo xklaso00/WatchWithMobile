@@ -163,7 +163,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint(JNIEnv *env, jobject 
 
 extern "C"
 JNIEXPORT jbyteArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint2(JNIEnv *env, jobject thiz,jint SecLevel) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_randPoint2(JNIEnv *env, jobject thiz, jint SecLevel) {
     if(SecLevel==0)
     {
         uECC_generate_random_int(reinterpret_cast<uECC_word_t *>(rando20), curve->n, nativeNCount20);
@@ -191,7 +191,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randPoint2(JNIEnv *env, jobject
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn2(JNIEnv *env, jobject /* this */,jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_randReturn2(JNIEnv *env, jobject /* this */, jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
     int byteLenght=0;
     if (SecLevel==0)
     {
@@ -212,7 +212,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_randReturn2(JNIEnv *env, jobjec
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk2(JNIEnv *env, jobject /* this */,jbyteArray JavaPointTv, jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_generateTk2(JNIEnv *env, jobject /* this */, jbyteArray JavaPointTv, jint SecLevel) { //just a function to return random number to C, only call this after randPoint has been called
     jbyteArray cPointTv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(JavaPointTv, NULL));
     jbyte* point1;
     if(SecLevel==0)
@@ -237,7 +237,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTk2(JNIEnv *env, jobjec
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray t1, int SecLevel) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_generateTWithWatch2(JNIEnv *env, jobject /* this */, jbyteArray t1, int SecLevel) {
     jbyteArray ct1= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(t1, NULL));
     jbyte* point1;
     if(SecLevel==0){
@@ -252,15 +252,13 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTWithWatch2(JNIEnv *env
                        reinterpret_cast<const uECC_word_t *>(randPoint2),
                        reinterpret_cast<uECC_word_t *>(point1), curve);
     }
-    jbyteArray newArray = env->NewByteArray(numOfBytesToGive); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    jbyteArray newArray = env->NewByteArray(numOfBytesToGive); //size is numOfBytesToGive, it has been changed in signature Verification
     env->SetByteArrayRegion(newArray, 0,numOfBytesToGive, point1);//we release the array for Java to use
-
     return newArray;
-
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch2(JNIEnv *env, jobject /* this */,jbyteArray tk2,jbyteArray JavaPointTv, jint SecLevel) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_generateTkWithWatch2(JNIEnv *env, jobject /* this */, jbyteArray tk2, jbyteArray JavaPointTv, jint SecLevel) {
     jbyteArray cTk2= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(tk2, NULL));
     jbyteArray cPointTv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(JavaPointTv, NULL));
     jbyte* tk;
@@ -285,7 +283,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_generateTkWithWatch2(JNIEnv *en
     }
 
 
-    jbyteArray newArray = env->NewByteArray(numOfBytesToGive); //size has to be nativeNCount *4 it pretty much means it is 64 bytes when converted to Java
+    jbyteArray newArray = env->NewByteArray(numOfBytesToGive); //size is numOfBytesToGive, it has been changed in signature Verification
     env->SetByteArrayRegion(newArray, 0,numOfBytesToGive, tk);//we release the array for Java to use
 
     return newArray;
@@ -402,11 +400,9 @@ jbyte* point20= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount20 *2]());
 jbyte* cPub= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount20 *2]());
 extern "C"
 JNIEXPORT jbyteArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer2(JNIEnv *env, jobject thiz,jbyteArray sv, jbyteArray pub, jbyteArray ev,jint SecLevel) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_verSignServer2(JNIEnv *env, jobject thiz, jbyteArray sv, jbyteArray pub, jbyteArray ev, jint SecLevel) {
     const uECC_word_t* g;
-
     jbyteArray cPub= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(pub, NULL));
-    //cPub=reinterpret_cast<jbyte*>(env->GetByteArrayElements(pub, NULL));
     jbyteArray cSv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(sv, NULL));
     jbyteArray cEv= reinterpret_cast<jbyteArray>(env->GetByteArrayElements(ev, NULL));
     if(SecLevel==1)
@@ -440,12 +436,6 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer2(JNIEnv *env, job
         return newArray;
     }
 
-
-
-    //jintArray cSv= reinterpret_cast<jintArray>(env->GetIntArrayElements(sv, NULL));
-    //jintArray cEv= reinterpret_cast<jintArray>(env->GetIntArrayElements(ev, NULL));
-
-    //jbyte* point1= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
     uECC_point_mult(reinterpret_cast<uECC_word_t *>(point1), g,
                     reinterpret_cast<const uECC_word_t *>(cSv), curve);
     //jbyte* point2= reinterpret_cast<jbyte *>(new uECC_word_t[nativeNCount * 2]());
@@ -470,7 +460,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_verSignServer2(JNIEnv *env, job
 }
 extern "C"
 JNIEXPORT jbyteArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_getPt1(JNIEnv *env, jobject thiz) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_getPt1(JNIEnv *env, jobject thiz) {
     jbyteArray newArray=env->NewByteArray(44);
     env->SetByteArrayRegion(newArray,0,44,point10);
 
@@ -478,7 +468,7 @@ Java_cz_vutbr_feec_watchwithmobile_EccOperations_getPt1(JNIEnv *env, jobject thi
 }
 extern "C"
 JNIEXPORT jbyteArray  JNICALL
-Java_cz_vutbr_feec_watchwithmobile_EccOperations_getPt2(JNIEnv *env, jobject thiz) {
+Java_cz_vutbr_feec_watchwithmobile_EcOperations_getPt2(JNIEnv *env, jobject thiz) {
     jbyteArray newArray=env->NewByteArray(44);
     env->SetByteArrayRegion(newArray,0,44,point20);
 

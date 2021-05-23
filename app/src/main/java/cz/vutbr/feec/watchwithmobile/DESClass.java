@@ -15,7 +15,7 @@ public class DESClass {
     public static byte[] encrypt(byte[] plaintext, SecretKey key, byte[] IV) throws Exception
     {
         // Get Cipher Instance
-        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
+        Cipher cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding");
 
         // Create SecretKeySpec
         SecretKeySpec keySpec = new SecretKeySpec(key.getEncoded(), "DESede");

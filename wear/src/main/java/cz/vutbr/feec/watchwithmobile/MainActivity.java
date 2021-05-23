@@ -159,7 +159,7 @@ public class MainActivity extends WearableActivity {
                 allEnd=System.nanoTime();
                 Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
                 Log.i("TTIMER","T4 is "+(allEnd-T4)/1000000+" ms");
-                textView.setText("Communication ended. "+second);
+                textView.setText("Communication ended.");
                 return;
             }
             else if(intent.getStringExtra("path").equals("path3"))

@@ -97,11 +97,11 @@ public class MainActivity extends AppCompatActivity {
         resetBttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(Example.end==true)
+                if(Conditions.end==true)
                 {
                     reWatchConnection();
                 }
-                Example.Reset();
+                Conditions.Reset();
                 resetUI();
                 Toast.makeText(getApplicationContext(),"Communication has been restarted",Toast.LENGTH_LONG).show();
             }
@@ -195,8 +195,8 @@ public class MainActivity extends AppCompatActivity {
         ProgressTextView.setText("");
         APDUProgressImage.setVisibility(View.INVISIBLE);
         introText.setVisibility(View.VISIBLE);
-        Example.startedRegister=false;
-        Example.gotRegister=false;
+        Conditions.startedRegister=false;
+        Conditions.gotRegister=false;
     }
     public void reWatchConnection()
     {
@@ -282,8 +282,10 @@ public class MainActivity extends AppCompatActivity {
                 else {
                     if(intent.getStringExtra("value").equals("NO"))
                         msgToShow="Authentication Failed!";
-                    else
+                    else if(intent.getStringExtra("value").equals("RNO"))
                         msgToShow="Registration Failed!";
+                    else
+                        msgToShow="Could not verify server, try to disable timeStamp check";
                     runOnUiThread(new Runnable() {
                         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
                         @Override

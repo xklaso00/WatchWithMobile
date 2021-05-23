@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Path;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,11 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import static java.lang.Thread.sleep;
 
@@ -106,7 +101,7 @@ public class MyHostApduService extends HostApduService {
             (byte)0x21};
     private static final byte[] SERVERPUBKEYS={(byte)0x80,
             (byte)0x11};
-    EccOperations eccOperations = new EccOperations();
+    EcOperations eccOperations = new EcOperations();
     byte[] signedFromWatch=null;
     byte[] RandFromWatch=null;
     boolean serverLegit=false;
@@ -130,7 +125,7 @@ public class MyHostApduService extends HostApduService {
         if (utils.isEqual(APDU_SELECT, commandApdu)) {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             SendToMainAcc("APDUcoms","on");
-            Example.end=true;
+            Conditions.end=true;
             startApdu=System.nanoTime();
             byte[] toGive=A_OKAY;
             if (!Options.isRegistered)
@@ -186,6 +181,12 @@ public class MyHostApduService extends HostApduService {
             Log.i(TAG, "incoming commandApdu: " + utils.bytesToHex(commandApdu));
             byte secLevel=commandApdu[2];
             Options.setByteSecLevel(secLevel);
+            if(commandApdu.length<(Options.BYTELENGHT*2+25))
+            {
+                Log.i(TAG,"did not recieve the whole apdu, so ending "+commandApdu.length);
+                SendToMainAcc("Result","Sno");
+                return UNKNOWN_CMD_SW;
+            }
             try {
                 byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
                 byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
@@ -193,7 +194,7 @@ public class MyHostApduService extends HostApduService {
                 if(eccOperations.verifyServer(sv,ev,commandApdu,timestamp))
                 {
                     Log.i(TAG,"It is super legit");
-                    byte[] toGive=eccOperations.generateProof2();
+                    byte[] toGive=eccOperations.generateProofForSingle();
                     //eccOperations.comuteInJavaProof();
                     return toGive;
                     //eccOperations.generateProof2();
@@ -203,10 +204,10 @@ public class MyHostApduService extends HostApduService {
                 Log.i(TAG,"Exception in verify");
                 Log.i(TAG,e.getMessage());
             }
-
+            SendToMainAcc("Result","Sno");
             return UNKNOWN_CMD_SW;
         }
-        else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Example.startedRegister)
+        else if(utils.isCommand(REGISTERDEV,commandApdu)&&!Conditions.startedRegister)
         {
             Log.i(TAG,"I got command "+utils.bytesToHex(commandApdu));
             Log.i(TAG,"I got Start register of Watch ");
@@ -215,15 +216,15 @@ public class MyHostApduService extends HostApduService {
             //here you could implement different code for different devices, since we have Index of device in commapdu[2]
             //but we are only working with one other device
             new SendMessage("/pathRegister",A_OKAY).start();
-            Example.startedRegister=true;
+            Conditions.startedRegister=true;
             return NOTYET;
         }
-        else if(utils.isCommand(REGISTERDEV,commandApdu)&&Example.startedRegister)
+        else if(utils.isCommand(REGISTERDEV,commandApdu)&& Conditions.startedRegister)
         {
-            if(!Example.gotRegister)
+            if(!Conditions.gotRegister)
                 return NOTYET;
             else {
-                Example.startedRegister=false;
+                Conditions.startedRegister=false;
                 return keysFromWatch;
             }
         }
@@ -249,6 +250,13 @@ public class MyHostApduService extends HostApduService {
             StartBlockWithWatch=System.nanoTime();
             byte secLevel=commandApdu[2];
             Options.setByteSecLevel(secLevel);
+            if(commandApdu.length<(Options.BYTELENGHT*2+25))
+            {
+                Log.i(TAG,"did not recieve the whole apdu, so ending "+commandApdu.length);
+                SendToMainAcc("Result","Sno");
+                return UNKNOWN_CMD_SW;
+            }
+
             byte [] ev= Arrays.copyOfRange(commandApdu,5,Options.BYTELENGHT+5);
             byte [] sv= Arrays.copyOfRange(commandApdu,Options.BYTELENGHT+5,Options.BYTELENGHT*2+5);
             byte[] timestamp=Arrays.copyOfRange(commandApdu,Options.BYTELENGHT*2+5,commandApdu.length-1);
@@ -267,13 +275,16 @@ public class MyHostApduService extends HostApduService {
                         new SendMessage("/path1", TvWithSec).start();
                     }
                     m1sent=true;
-                    if(Example.GotIt==false) {
+                    if(Conditions.GotIt==false) {
                         Log.i("APDU","Sending notYet");
                         return NOTYET;
                     }
 
                 }
-                else return UNKNOWN_CMD_SW;
+                else {
+                    SendToMainAcc("Result","Sno");
+                    return UNKNOWN_CMD_SW;
+                }
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -281,12 +292,12 @@ public class MyHostApduService extends HostApduService {
             }
             return NOTYET;
         }
-        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(m1sent)&&(!Example.GotIt))
+        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(m1sent)&&(!Conditions.GotIt))
         {
             Log.i(TAG,"NOTYET");
             return NOTYET;
         }
-        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(Example.GotIt))
+        else if(utils.isCommand(SERVERSIGCOMWITHWATCH,commandApdu)&&(Conditions.GotIt))
         {
             try {
                 ByteArrayOutputStream outputStream= new ByteArrayOutputStream();
@@ -337,9 +348,9 @@ public class MyHostApduService extends HostApduService {
     public void onDeactivated(int reason) {
         Log.i(TAG,"Communication is done.");
         m1sent=false;
-        Example.GotIt=false;
-        Example.gotSecondLBM=false;
-        Example.gotFirstLBM=false;
+        Conditions.GotIt=false;
+        Conditions.gotSecondLBM=false;
+        Conditions.gotFirstLBM=false;
     }
     public void SendToMainAcc(String path, String Value)
     {
@@ -394,7 +405,7 @@ public class MyHostApduService extends HostApduService {
             //Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
             boolean updatedView=false;
             Log.i("WatchComms", "Starting connection to watch");
-            while(Example.end==false) {
+            while(Conditions.end==false) {
                 Task<List<Node>> wearableList = Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
                 try {
 
@@ -407,7 +418,7 @@ public class MyHostApduService extends HostApduService {
                         Log.i("WatchComs","Couldn't connect to the watch");
 
                         SendToMainAcc("watchUpdate","off");
-                        Example.end=true;
+                        Conditions.end=true;
                         break;
                     }
                     if(!updatedView) {
@@ -431,9 +442,9 @@ public class MyHostApduService extends HostApduService {
         public void onReceive(Context context, Intent intent) {
             if(intent.getStringExtra("path").equals("2")){
                 Log.i(TAG,"Received proof from watch");
-                if(Example.gotSecondLBM==true)
+                if(Conditions.gotSecondLBM==true)
                     return;
-                Example.gotSecondLBM=true;
+                Conditions.gotSecondLBM=true;
                 signedFromWatch = intent.getByteArrayExtra("data");
                 Log.i("Timer","To second watch response it took "+(System.nanoTime()-StartBlockWithWatch)/1000000+" ms");
                 Log.i(TAG,"Signed from watch is : "+utils.bytesToHex(signedFromWatch)) ;
@@ -441,17 +452,17 @@ public class MyHostApduService extends HostApduService {
                // long Duration= End-Start;
                // Log.i(TAG, "It toooooook "+Duration/1000000+"ms");
                 //notifyAll();
-                Example.GotIt=true;
+                Conditions.GotIt=true;
             }
             else if(intent.getStringExtra("path").equals("1"))
             {
                 Log.i(TAG,"got path1 in LBM");
 
-                if(Example.gotFirstLBM==true)
+                if(Conditions.gotFirstLBM==true)
                     return;
                 long duration1=System.nanoTime()-Start1;
                 Log.i("Timer","fist communication took "+duration1/1000000+" ms");
-                Example.gotFirstLBM=true;
+                Conditions.gotFirstLBM=true;
                 byte[] Tk2T1=intent.getByteArrayExtra("data");
                 byte [] Tk2=Arrays.copyOfRange(Tk2T1,0,Options.BYTELENGHT+1);
                 Log.i(TAG,"Tk2 is "+utils.bytesToHex(Tk2));
@@ -472,18 +483,18 @@ public class MyHostApduService extends HostApduService {
             else if(intent.getStringExtra("path").equals("3")) {
                 RandFromWatch = intent.getByteArrayExtra("message");
                 Log.i(TAG,"I got RandFromWatch");
-                Example.GotRandWatch= true;
+                Conditions.GotRandWatch= true;
             }
             else if(intent.getStringExtra("path").equals("4")) {
                 startTestMsg();
                 new SendMessage("/pathReset",A_OKAY).start();
             }
             else if(intent.getStringExtra("path").equals("pathRegister")){
-                if(Example.gotRegister)
+                if(Conditions.gotRegister)
                     return;
-                Example.gotRegister=true;
+                Conditions.gotRegister=true;
                 keysFromWatch=intent.getByteArrayExtra("data");
-                Example.readyToSendRegister=true;
+                Conditions.readyToSendRegister=true;
 
             }
         }

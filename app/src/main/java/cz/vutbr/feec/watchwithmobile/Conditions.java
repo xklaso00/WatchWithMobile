@@ -1,6 +1,6 @@
 package cz.vutbr.feec.watchwithmobile;
 
-public class Example {
+public class Conditions {
     public static boolean GotIt=false;
     public static boolean GotRandWatch=false;
     public static boolean gotFirstLBM=false;

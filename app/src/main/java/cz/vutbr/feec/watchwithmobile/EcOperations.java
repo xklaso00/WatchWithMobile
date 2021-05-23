@@ -32,7 +32,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 //class that holds info about curve, secret key for now and functions with EC
-public class EccOperations {
+public class EcOperations {
     static {
         System.loadLibrary("native-lib");
     }
@@ -69,7 +69,7 @@ public class EccOperations {
     private byte[] PubKey224;
     private byte[] PubKey160;
     CurvesSpecifics cs;
-    public EccOperations() {
+    public EcOperations() {
         cs= new CurvesSpecifics();
         SecKey=Options.getPrivateKey();
         //pubKey= cs.getG().multiply(SecKey);
@@ -187,13 +187,16 @@ public class EccOperations {
         serverTimeStamp=timeStamp;
         byte[] ourTime=GenerateTimeStamp();
         if(Options.timeChecking) {
+
             if (utils.isEqual(timeStamp, ourTime))
                 Log.i("ECCOP", "Time stamps are the same");
             else {
-                if (utils.isEqual(Arrays.copyOfRange(timeStamp, 0, timeStamp.length - 1), Arrays.copyOfRange(ourTime, 0, ourTime.length - 1)))
+                if (utils.isEqual(Arrays.copyOfRange(timeStamp, 0, timeStamp.length - 2), Arrays.copyOfRange(ourTime, 0, ourTime.length - 2)))
                     Log.i("ECCOP", "Time stamps are almost the same");
-                else
+                else {
+                    Log.i("ECCOP", "Time stamps different too much, false returned");
                     return false;
+                }
             }
         }
         ECPoint PubServerEC= cs.getCurve().decodePoint(utils.bytesFromBigInteger(Options.getServerPubKey()));
@@ -302,7 +305,7 @@ public class EccOperations {
 
     }
 
-    public byte [] generateProof2() throws NoSuchAlgorithmException, IOException {
+    public byte [] generateProofForSingle() throws NoSuchAlgorithmException, IOException {
 
         byte []t=randPoint2(Options.SECURITY_LEVEL);
         Log.i("APDU"," T before fix is "+utils.bytesToHex(t));
@@ -520,6 +523,7 @@ public class EccOperations {
         String stamp= ZonedDateTime
                 .now( ZoneId.systemDefault() )
                 .format( DateTimeFormatter.ofPattern( "uuuu.MM.dd.HH.mm.ss" ) );
+        Log.i("TIMECHECK","our time "+stamp);
         byte[] timeBytes=stamp.getBytes();
         return timeBytes;
     }
