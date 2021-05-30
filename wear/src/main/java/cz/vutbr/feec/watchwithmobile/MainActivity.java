@@ -1,7 +1,9 @@
 package cz.vutbr.feec.watchwithmobile;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.graphics.Path;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -13,6 +15,7 @@ import android.support.wearable.activity.WearableActivity;
 import android.widget.TextView;
 import android.view.View;
 
+import androidx.annotation.RequiresApi;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.gms.tasks.Task;
@@ -98,6 +101,7 @@ public class MainActivity extends WearableActivity {
     boolean regdone=false;
     //receiver to receive LocalBroadcasts from messageService Class
     public class Receiver extends BroadcastReceiver {
+        @SuppressLint("SetTextI18n")
         @Override
         public void onReceive(Context context, Intent intent) {
             //if (recieve==false)
@@ -152,6 +156,8 @@ public class MainActivity extends WearableActivity {
                 Log.i(TAG,"Hash is "+utils.bytesToHex(hash));
                 signedHash= eccOperations.SignHash(hash);
                 long endTime= System.nanoTime();
+
+
                 Log.i(TAG,"Signing of the hash on watch took "+(endTime-startTime)+" ns");
                 Log.i(TAG,"Signature is "+utils.bytesToHex(signedHash));
                 new SendMessage("/path2", signedHash).start();
@@ -159,7 +165,13 @@ public class MainActivity extends WearableActivity {
                 allEnd=System.nanoTime();
                 Log.i(TAG,"Communication on my end took "+(allEnd-allStart)/1000000+" ms");
                 Log.i("TTIMER","T4 is "+(allEnd-T4)/1000000+" ms");
-                textView.setText("Communication ended.");
+                runOnUiThread(new Runnable() {
+                    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                    @Override
+                    public void run() {
+                        textView.setText("Communication ended.");
+                    }
+                });
                 return;
             }
             else if(intent.getStringExtra("path").equals("path3"))

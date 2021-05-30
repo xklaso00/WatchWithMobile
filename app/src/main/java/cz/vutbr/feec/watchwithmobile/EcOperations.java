@@ -5,7 +5,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import org.spongycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.io.ByteArrayOutputStream;
@@ -26,7 +25,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.Random;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -57,7 +55,7 @@ public class EcOperations {
     byte[] CRand;
     //ECCurve ec2=
     BigInteger SecKey;
-    ECPoint pubKey=null;
+
     //BigInteger pubServerBig=new BigInteger("03CD58B4FAE7CD42D41A0AE52433143FAB6F43A15F5CD8D2B69E8F8ECDE72C2069",16);
     BigInteger pubServerBig;
    // byte [] ServerPubKeyBytes= pubServerBig.toByteArray();
@@ -76,40 +74,6 @@ public class EcOperations {
         pubServerBig=Options.getServerPubKey();
         //ServerPubKeyBytes= pubServerBig.toByteArray();
 
-    }
-    //returns public key
-    public byte [] givePub(){
-        byte [] pub=pubKey.getEncoded(true);
-
-        return pub;
-    }
-    //generate random Biginteger mod n
-    public BigInteger generateRandom()
-    {
-        do {
-            Random randNum = new Random();
-            rand = new BigInteger(cs.getN().bitLength(), randNum);
-        } while (rand.compareTo(cs.getN()) >= 0);
-        return rand;
-    }
-    //function was used to generate random points in java with random from java, next with random from C for testing and now it is not really used anymore
-    public byte[] getRandPoint(){
-        //rand=generateRandom();
-        ECPoint S= cs.getG().multiply(rand);
-        Send= S.getEncoded(true);
-        /*BigInteger Se= rand.multiply(G2).mod(prime);
-        Send= bytesFromBigInteger(Se);*/
-        return Send;
-    }
-    //function to create the proof of knowledge, pretty fast in Java
-    public byte [] SignHash(byte[] hash)
-    {
-        BigInteger M = null;
-        BigInteger hashBig= new BigInteger(1,hash);
-        M= rand.add(hashBig.multiply(SecKey)).mod(cs.getN());
-        byte [] M2= utils.bytesFromBigInteger(M);
-
-        return  M2;
     }
 
 
@@ -138,10 +102,6 @@ public class EcOperations {
        // Log.i("CompTimer","Comp took "+(System.nanoTime()-time)+"ns");
         return comPoint;
     }
-
-    public BigInteger getSecKey() {
-        return SecKey;
-    } //just for testing
 
     public byte[] genertateSecKey() throws NoSuchProviderException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
@@ -358,7 +318,7 @@ public class EcOperations {
         byte[] finalMSG=outputStream.toByteArray();
         outputStream.close();
         Log.i("APDU"," Sig is"+utils.bytesToHex(signature));
-        InicializeAES(Tk);
+        InitializeAES(Tk);
         return finalMSG;
     }
     byte[] hashForBoth;
@@ -420,7 +380,7 @@ public class EcOperations {
         outputStream.write(signature);
         byte[] finalMSG=outputStream.toByteArray();
         outputStream.close();
-        InicializeAES(Tk);
+        InitializeAES(Tk);
         return finalMSG;
 
     }
@@ -451,7 +411,7 @@ public class EcOperations {
         byte[] point=utils.reverseByte(utils.intArrtoByteArr(CPoint));
         return getCompPointFromCord(point);
     }
-    public void InicializeAES(byte[] Tk) throws NoSuchAlgorithmException {
+    public void InitializeAES(byte[] Tk) throws NoSuchAlgorithmException {
         if(Options.SECURITY_LEVEL==1||Options.SECURITY_LEVEL==2)
         {
             MessageDigest digest = null;
@@ -577,7 +537,7 @@ public class EcOperations {
        byte[] finalMSG=outputStream.toByteArray();
        outputStream.close();
        Log.i("APDU"," Sig JAVA is"+utils.bytesToHex(signature));
-       InicializeAES(Tk);
+       InitializeAES(Tk);
        return finalMSG;
    }
 

@@ -77,7 +77,7 @@ public class MyHostApduService extends HostApduService {
             (byte)0x04,
             (byte)0x00,
             (byte)0x07,
-            (byte)0xF0, (byte)0x39, (byte)0x41, (byte)0x48, (byte)0x14, (byte)0x81, (byte)0x00, // APP name, for now from example, not unique
+            (byte)0xF0, (byte)0x20, (byte)0x40, (byte)0x50, (byte)0x88, (byte)0x66, (byte)0x10, // APP name, for now from example, not unique
             (byte)0x00
     };
     private static final byte[] A_OKAY ={ (byte)0x90,  //we send this to signalize everything is A_OKAY!
@@ -536,6 +536,5 @@ public class MyHostApduService extends HostApduService {
     {
         new SendMessageTEST("/path3",A_OKAY).start();
     }
-    public native int[] randPoint();
-    public native int [] randReturn();
+    
 }
